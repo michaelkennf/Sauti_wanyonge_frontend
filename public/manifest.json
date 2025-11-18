@@ -1,0 +1,147 @@
+{
+  "name": "Sauti ya Wayonge - Enquêteurs",
+  "short_name": "Sauti ya Wayonge",
+  "description": "Plateforme nationale de signalement et d'assistance aux victimes de violences sexuelles et basées sur le genre en RDC - Interface Enquêteurs",
+  "start_url": "/enqueteur/formulaire",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "fr",
+  "dir": "ltr",
+  "categories": ["social", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouvelle enquête",
+      "short_name": "Enquête",
+      "description": "Créer une nouvelle enquête",
+      "url": "/enqueteur/formulaire",
+      "icons": [
+        {
+          "src": "/icons/shortcut-enquete.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Connexion",
+      "short_name": "Login",
+      "description": "Se connecter en tant qu'enquêteur",
+      "url": "/auth/investigator-login",
+      "icons": [
+        {
+          "src": "/icons/shortcut-login.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/formulaire-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Formulaire d'enquête sur desktop"
+    },
+    {
+      "src": "/screenshots/formulaire-mobile.png",
+      "sizes": "375x667",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Formulaire d'enquête sur mobile"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+sauti",
+      "url": "/enqueteur/formulaire?protocol=%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/enqueteur/formulaire",
+      "accept": {
+        "image/*": [".jpg", ".jpeg", ".png", ".gif"],
+        "video/*": [".mp4", ".webm", ".mov"],
+        "audio/*": [".mp3", ".wav", ".webm"],
+        "application/pdf": [".pdf"]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "/enqueteur/formulaire",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "evidence",
+          "accept": ["image/*", "video/*", "audio/*", "application/pdf"]
+        }
+      ]
+    }
+  }
+}
