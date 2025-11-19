@@ -1,6 +1,6 @@
-// Service Worker pour Sauti ya Wayonge - Mode hors ligne
-const CACHE_NAME = 'sauti-ya-wayonge-v1'
-const OFFLINE_CACHE_NAME = 'sauti-ya-wayonge-offline-v1'
+// Service Worker pour Sauti ya Wa Nyonge - Mode hors ligne
+const CACHE_NAME = 'sauti-ya-wa-nyonge-v1'
+const OFFLINE_CACHE_NAME = 'sauti-ya-wa-nyonge-offline-v1'
 
 // Ressources à mettre en cache pour le mode hors ligne
 const CACHE_URLS = [

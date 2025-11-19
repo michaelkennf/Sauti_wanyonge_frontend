@@ -29,7 +29,7 @@ export default function NotFoundPage() {
               <div className="relative h-20 w-20">
                 <Image
                   src="/logo-sauti-ya-wayonge.png"
-                  alt="Sauti ya Wayonge"
+                  alt="Sauti ya Wa Nyonge"
                   fill
                   className="object-contain"
                 />

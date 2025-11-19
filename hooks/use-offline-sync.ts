@@ -10,7 +10,7 @@ class OfflineDatabase extends Dexie {
   syncQueue!: Dexie.Table<SyncQueueItem, number>
 
   constructor() {
-    super('SautiYaWayongeOffline')
+    super('SautiYaWaNyongeOffline')
     this.version(1).stores({
       complaints: '++id, investigatorId, createdAt, updatedAt, isSynced, syncStatus',
       mediaFiles: '++id, complaintId, fileName, fileType, fileData, createdAt, isSynced',

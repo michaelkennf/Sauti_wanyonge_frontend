@@ -162,7 +162,7 @@ export default function ContactPage() {
                     <Mail className="h-5 w-5 text-primary mt-1" />
                     <div>
                       <p className="font-semibold">Email officiel</p>
-                      <p className="text-muted-foreground">contact@sautiyawayonge.cd</p>
+                      <p className="text-muted-foreground">contact@sautiyawanyonge.cd</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">

@@ -1,5 +1,5 @@
 /**
- * Configuration PM2 pour le Frontend Sauti ya Wayonge
+ * Configuration PM2 pour le Frontend Sauti ya Wa Nyonge
  * 
  * Installation: npm install -g pm2
  * Démarrage: pm2 start ecosystem.config.js

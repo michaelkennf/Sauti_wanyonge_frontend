@@ -36,7 +36,7 @@ export function AdminSidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: Adm
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-foreground">Admin Panel</h2>
-                <p className="text-sm text-muted-foreground">Sauti ya Wayonge</p>
+                <p className="text-sm text-muted-foreground">Sauti ya Wa Nyonge</p>
               </div>
               <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsOpen(false)}>
                 <X className="h-5 w-5" />

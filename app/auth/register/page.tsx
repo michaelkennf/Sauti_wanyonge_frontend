@@ -115,7 +115,7 @@ export default function RegisterPage() {
 
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Créer un compte</h1>
-            <p className="text-gray-600">Rejoignez la plateforme Sauti ya Wayonge</p>
+            <p className="text-gray-600">Rejoignez la plateforme Sauti ya Wa Nyonge</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">

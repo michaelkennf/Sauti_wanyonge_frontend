@@ -135,7 +135,7 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
     const element = document.createElement("a")
     const file = new Blob(
       [
-        `Code de suivi de plainte: ${uniqueCode}\n\nConservez ce code précieusement pour suivre l'évolution de votre dossier sur https://sautiyawayonge.cd/suivi\n\nDate de dépôt: ${new Date().toLocaleDateString("fr-FR")}`,
+        `Code de suivi de plainte: ${uniqueCode}\n\nConservez ce code précieusement pour suivre l'évolution de votre dossier sur https://sautiyawanyonge.cd/suivi\n\nDate de dépôt: ${new Date().toLocaleDateString("fr-FR")}`,
       ],
       { type: "text/plain" },
     )
