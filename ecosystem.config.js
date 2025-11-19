@@ -14,7 +14,7 @@ module.exports = {
       name: 'vbgsos-frontend',
       script: 'npm',
       args: 'start',
-      cwd: process.cwd(),
+      cwd: './frontend',
       instances: 1,
       exec_mode: 'fork',
       
