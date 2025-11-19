@@ -63,7 +63,7 @@ export default function NGOComplaintsPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterType, setFilterType] = useState<string>("all")
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [isOnline, setIsOnline] = useState(true) // Valeur par défaut pour SSR
 
   // Données simulées pour les ONG
   const mockComplaints: Complaint[] = [
@@ -145,16 +145,25 @@ export default function NGOComplaintsPage() {
   useEffect(() => {
     loadComplaints()
     
+    // Initialiser l'état de connexion (uniquement côté client)
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+      setIsOnline(navigator.onLine)
+    }
+    
     // Surveiller l'état de la connexion
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
     
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnline)
+      window.addEventListener('offline', handleOffline)
+    }
     
     return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleOnline)
+        window.removeEventListener('offline', handleOffline)
+      }
     }
   }, [])
 

@@ -92,7 +92,7 @@ export interface OfflineSyncState {
 
 export function useOfflineSync() {
   const [state, setState] = useState<OfflineSyncState>({
-    isOnline: navigator.onLine,
+    isOnline: typeof window !== 'undefined' && typeof navigator !== 'undefined' ? navigator.onLine : true,
     isSyncing: false,
     pendingItems: 0,
     lastSyncTime: null,
@@ -111,15 +111,21 @@ export function useOfflineSync() {
       setState(prev => ({ ...prev, isOnline: false }))
     }
 
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
+    // Initialiser l'état de connexion et écouter les événements (uniquement côté client)
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+      setState(prev => ({ ...prev, isOnline: navigator.onLine }))
+      window.addEventListener('online', handleOnline)
+      window.addEventListener('offline', handleOffline)
+    }
 
     // Vérifier les éléments en attente au démarrage
     checkPendingItems()
 
     return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleOnline)
+        window.removeEventListener('offline', handleOffline)
+      }
     }
   }, [])
 
