@@ -21,7 +21,7 @@ module.exports = {
       // Variables d'environnement
       env: {
         NODE_ENV: 'production',
-        PORT: 5002,
+        PORT: 5023,
       },
       
       // Gestion des erreurs
@@ -58,5 +58,6 @@ module.exports = {
     },
   ],
 }
+
 
 
