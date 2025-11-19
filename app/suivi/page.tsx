@@ -18,7 +18,7 @@ export default function SuiviPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState("")
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setError("")
     if (!code.trim()) {
       setError("Veuillez entrer un code de suivi")
@@ -26,55 +26,97 @@ export default function SuiviPage() {
     }
 
     setIsSearching(true)
+    setCaseData(null)
 
-    // Simulate API call
-    setTimeout(() => {
-      // Mock data
-      setCaseData({
-        code: code.toUpperCase(),
-        status: "En cours",
-        incidentType: "Harcèlement sexuel",
-        date: "2024-01-15",
-        location: "Kinshasa, Ngaliema",
-        submittedDate: "2024-01-16",
-        lastUpdate: "2024-01-20",
-        timeline: [
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const trackingCode = code.trim().toUpperCase()
+
+      const response = await fetch(`${API_URL}/complaints/tracking/${trackingCode}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setError("Ce code de suivi n'est pas attribué à un signalement")
+        } else {
+          setError(result.message || result.error || 'Erreur lors de la recherche')
+        }
+        setIsSearching(false)
+        return
+      }
+
+      if (result.success && result.data) {
+        const complaint = result.data
+        
+        // Mapper les statuts
+        const statusMap: Record<string, string> = {
+          'PENDING': 'En attente',
+          'IN_PROGRESS': 'En cours',
+          'COMPLETED': 'Terminé',
+          'CLOSED': 'Clôturé'
+        }
+
+        // Créer la timeline basée sur le statut
+        const timeline = [
           {
             status: "Reçue",
-            date: "2024-01-16",
+            date: new Date(complaint.createdAt).toLocaleDateString('fr-FR'),
             description: "Votre plainte a été enregistrée dans notre système",
             completed: true,
           },
           {
             status: "En cours d'analyse",
-            date: "2024-01-18",
+            date: complaint.status === 'IN_PROGRESS' || complaint.status === 'COMPLETED' || complaint.status === 'CLOSED' 
+              ? new Date(complaint.updatedAt).toLocaleDateString('fr-FR') 
+              : null,
             description: "Notre équipe examine votre dossier",
-            completed: true,
-          },
-          {
-            status: "Transmise aux services",
-            date: "2024-01-20",
-            description: "Votre dossier a été transmis aux services compétents",
-            completed: true,
+            completed: complaint.status !== 'PENDING',
           },
           {
             status: "En traitement",
-            date: null,
+            date: complaint.status === 'COMPLETED' || complaint.status === 'CLOSED'
+              ? new Date(complaint.updatedAt).toLocaleDateString('fr-FR')
+              : null,
             description: "Les services compétents traitent votre cas",
-            completed: false,
+            completed: complaint.status === 'COMPLETED' || complaint.status === 'CLOSED',
           },
           {
             status: "Clôturée",
-            date: null,
-            description: "Le dossier sera clôturé une fois le traitement terminé",
-            completed: false,
+            date: complaint.status === 'CLOSED'
+              ? new Date(complaint.updatedAt).toLocaleDateString('fr-FR')
+              : null,
+            description: "Le dossier a été clôturé",
+            completed: complaint.status === 'CLOSED',
           },
-        ],
-        assignedServices: ["Centre Médical Lisanga", "Clinique Juridique de Kinshasa"],
-        notes: "Votre dossier est actuellement en cours de traitement. Vous serez contacté sous 48h.",
-      })
+        ]
+
+        setCaseData({
+          code: complaint.trackingCode,
+          status: statusMap[complaint.status] || complaint.status,
+          incidentType: complaint.incidentType || 'Non spécifié',
+          date: new Date(complaint.createdAt).toLocaleDateString('fr-FR'),
+          location: `${complaint.geolocationProvince || ''}, ${complaint.geolocationTerritory || ''}`.trim() || 'Non spécifié',
+          submittedDate: new Date(complaint.createdAt).toLocaleDateString('fr-FR'),
+          lastUpdate: new Date(complaint.updatedAt).toLocaleDateString('fr-FR'),
+          timeline,
+          assignedServices: complaint.services?.map((s: any) => s.type) || [],
+          notes: `Votre dossier est actuellement ${statusMap[complaint.status] || complaint.status.toLowerCase()}. ${complaint.servicesCount || 0} service(s) assigné(s).`,
+        })
+      } else {
+        setError("Données invalides reçues du serveur")
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la recherche'
+      setError(errorMessage)
+    } finally {
       setIsSearching(false)
-    }, 1500)
+    }
   }
 
   return (

@@ -1,15 +1,16 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
-
 import { Label } from "@/components/ui/label"
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Download, Mail, Copy, Check } from "lucide-react"
-import { useState } from "react"
+import { CheckCircle2, Download, Mail, Copy, Check, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
 import type { ComplaintData } from "@/app/plainte/page"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
 type Step3Props = {
   data: Partial<ComplaintData>
@@ -17,20 +18,120 @@ type Step3Props = {
 }
 
 export function ComplaintStep3({ data, onBack }: Step3Props) {
+  const { toast } = useToast()
   const [copied, setCopied] = useState(false)
   const [email, setEmail] = useState("")
   const [emailSent, setEmailSent] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uniqueCode, setUniqueCode] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  // Generate a unique code
-  const uniqueCode = `${Math.random().toString(36).substring(2, 5).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`
+  // Envoyer la plainte au backend au chargement du composant
+  useEffect(() => {
+    const submitComplaint = async () => {
+      if (uniqueCode) return // Déjà soumis
+
+      setIsSubmitting(true)
+      setError(null)
+
+      try {
+        // Obtenir la géolocalisation
+        let latitude = 0
+        let longitude = 0
+        let accuracy = 0
+
+        if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+          try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
+            })
+            latitude = position.coords.latitude
+            longitude = position.coords.longitude
+            accuracy = position.coords.accuracy
+          } catch (geoError) {
+            console.warn('Géolocalisation non disponible:', geoError)
+            // Utiliser des coordonnées par défaut pour Kinshasa
+            latitude = -4.3276
+            longitude = 15.3136
+          }
+        }
+
+        // Préparer les données de la plainte
+        // Le backend résoudra automatiquement la géolocalisation à partir de latitude/longitude
+        const complaintPayload = {
+          type: 'VICTIM_DIRECT' as const,
+          priority: 'MEDIUM' as const,
+          beneficiaryData: {
+            name: data.isAnonymous ? 'Anonyme' : (data.name || 'Non spécifié'),
+            sex: 'OTHER' as const,
+            age: 0,
+            territory: 'Non spécifié',
+            groupement: 'Non spécifié',
+            village: 'Non spécifié',
+            householdSize: 1,
+            currentAddress: data.location || 'Non spécifié',
+            status: 'Victime',
+            natureOfFacts: data.incidentType || data.description || 'Non spécifié'
+          },
+          geolocation: {
+            latitude,
+            longitude
+          },
+          evidence: [],
+          services: data.needs || []
+        }
+
+        // Envoyer la plainte au backend
+        const response = await fetch(`${API_URL}/complaints/victim`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(complaintPayload)
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.message || result.error || 'Erreur lors de la soumission de la plainte')
+        }
+
+        if (result.success && result.data?.trackingCode) {
+          setUniqueCode(result.data.trackingCode)
+          toast({
+            title: "Succès",
+            description: "Votre plainte a été enregistrée avec succès",
+          })
+        } else {
+          throw new Error('Code de suivi non reçu du serveur')
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la soumission de la plainte'
+        setError(errorMessage)
+        toast({
+          title: "Erreur",
+          description: errorMessage,
+          variant: "destructive"
+        })
+      } finally {
+        setIsSubmitting(false)
+      }
+    }
+
+    submitComplaint()
+  }, [data, uniqueCode, toast])
 
   const copyCode = () => {
-    navigator.clipboard.writeText(uniqueCode)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (uniqueCode && typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(uniqueCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   const downloadCode = () => {
+    if (!uniqueCode) return
+    
     const element = document.createElement("a")
     const file = new Blob(
       [
@@ -91,21 +192,39 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
 
         {/* Unique Code */}
         <div className="border-2 border-primary rounded-lg p-6 space-y-4">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-2">Votre code confidentiel unique</p>
-            <p className="text-3xl font-bold text-primary tracking-wider">{uniqueCode}</p>
-          </div>
+          {isSubmitting ? (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+              <p className="text-sm text-muted-foreground">Enregistrement de votre plainte...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-destructive mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Réessayer
+              </Button>
+            </div>
+          ) : uniqueCode ? (
+            <>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-2">Votre code confidentiel unique</p>
+                <p className="text-3xl font-bold text-primary tracking-wider">{uniqueCode}</p>
+              </div>
+            </>
+          ) : null}
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button onClick={copyCode} variant="outline" className="flex-1 gap-2 bg-transparent">
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? "Copié !" : "Copier le code"}
-            </Button>
-            <Button onClick={downloadCode} variant="outline" className="flex-1 gap-2 bg-transparent">
-              <Download className="h-4 w-4" />
-              Télécharger
-            </Button>
-          </div>
+          {uniqueCode && (
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={copyCode} variant="outline" className="flex-1 gap-2 bg-transparent" disabled={!uniqueCode}>
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? "Copié !" : "Copier le code"}
+              </Button>
+              <Button onClick={downloadCode} variant="outline" className="flex-1 gap-2 bg-transparent" disabled={!uniqueCode}>
+                <Download className="h-4 w-4" />
+                Télécharger
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Email Option */}

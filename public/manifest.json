@@ -1,6 +1,6 @@
 {
-  "name": "Sauti ya Wayonge - Enquêteurs",
-  "short_name": "Sauti ya Wayonge",
+  "name": "Sauti ya Wa Nyonge - Enquêteurs",
+  "short_name": "Sauti ya Wa Nyonge",
   "description": "Plateforme nationale de signalement et d'assistance aux victimes de violences sexuelles et basées sur le genre en RDC - Interface Enquêteurs",
   "start_url": "/enqueteur/formulaire",
   "display": "standalone",

@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload, Mic, Video, X } from "lucide-react"
-import { useState, useRef } from "react"
+import { Upload, Mic, Video, X, StopCircle } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
 import type { ComplaintData } from "@/app/plainte/page"
+import { useMediaRecorder } from "@/hooks/use-media-recorder"
+import { useToast } from "@/hooks/use-toast"
 
 type Step2Props = {
   data: Partial<ComplaintData>
@@ -41,14 +43,21 @@ const needsOptions = [
 ]
 
 export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props) {
+  const { toast } = useToast()
   const [incidentType, setIncidentType] = useState(data.incidentType ?? "")
   const [date, setDate] = useState(data.date ?? "")
   const [location, setLocation] = useState(data.location ?? "")
   const [description, setDescription] = useState(data.description ?? "")
   const [evidence, setEvidence] = useState<File[]>(data.evidence ?? [])
   const [needs, setNeeds] = useState<string[]>(data.needs ?? [])
-  const [isRecording, setIsRecording] = useState(false)
+  const [recordingType, setRecordingType] = useState<'audio' | 'video' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Hook pour l'enregistrement audio
+  const audioRecorder = useMediaRecorder({ maxDuration: 35, audioOnly: true })
+  
+  // Hook pour l'enregistrement vidéo
+  const videoRecorder = useMediaRecorder({ maxDuration: 35, videoOnly: false })
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -59,6 +68,73 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
   const removeFile = (index: number) => {
     setEvidence(evidence.filter((_, i) => i !== index))
   }
+
+  // Gérer l'enregistrement audio
+  const handleAudioRecording = async () => {
+    if (audioRecorder.isRecording) {
+      audioRecorder.stopRecording()
+      setRecordingType(null)
+    } else {
+      try {
+        await audioRecorder.startRecording()
+        setRecordingType('audio')
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de démarrer l'enregistrement audio",
+          variant: "destructive"
+        })
+      }
+    }
+  }
+
+  // Gérer l'enregistrement vidéo
+  const handleVideoRecording = async () => {
+    if (videoRecorder.isRecording) {
+      videoRecorder.stopRecording()
+      setRecordingType(null)
+    } else {
+      try {
+        await videoRecorder.startRecording()
+        setRecordingType('video')
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de démarrer l'enregistrement vidéo",
+          variant: "destructive"
+        })
+      }
+    }
+  }
+
+  // Ajouter les enregistrements aux preuves quand ils sont terminés
+  useEffect(() => {
+    if (audioRecorder.mediaBlob && recordingType === 'audio') {
+      const audioFile = new File([audioRecorder.mediaBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' })
+      setEvidence([...evidence, audioFile])
+      updateData({ audioRecording: audioRecorder.mediaBlob })
+      audioRecorder.resetRecording()
+      setRecordingType(null)
+    }
+  }, [audioRecorder.mediaBlob, recordingType])
+
+  useEffect(() => {
+    if (videoRecorder.mediaBlob && recordingType === 'video') {
+      const videoFile = new File([videoRecorder.mediaBlob], `video_${Date.now()}.webm`, { type: 'video/webm' })
+      setEvidence([...evidence, videoFile])
+      updateData({ videoRecording: videoRecorder.mediaBlob })
+      videoRecorder.resetRecording()
+      setRecordingType(null)
+    }
+  }, [videoRecorder.mediaBlob, recordingType])
+
+  // Nettoyer les enregistrements au démontage
+  useEffect(() => {
+    return () => {
+      audioRecorder.cleanup()
+      videoRecorder.cleanup()
+    }
+  }, [])
 
   const toggleNeed = (need: string) => {
     setNeeds((prev) => (prev.includes(need) ? prev.filter((n) => n !== need) : [...prev, need]))
@@ -151,15 +227,40 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
             <Button
               type="button"
               variant="outline"
-              className="gap-2 bg-transparent"
-              onClick={() => setIsRecording(!isRecording)}
+              className={`gap-2 bg-transparent ${recordingType === 'audio' ? 'border-destructive text-destructive' : ''}`}
+              onClick={handleAudioRecording}
+              disabled={recordingType === 'video'}
             >
-              <Mic className="h-4 w-4" />
-              {isRecording ? "Arrêter" : "Enregistrer audio"}
+              {recordingType === 'audio' ? (
+                <>
+                  <StopCircle className="h-4 w-4" />
+                  Arrêter ({audioRecorder.duration}s)
+                </>
+              ) : (
+                <>
+                  <Mic className="h-4 w-4" />
+                  Enregistrer audio
+                </>
+              )}
             </Button>
-            <Button type="button" variant="outline" className="gap-2 bg-transparent">
-              <Video className="h-4 w-4" />
-              Enregistrer vidéo
+            <Button 
+              type="button" 
+              variant="outline" 
+              className={`gap-2 bg-transparent ${recordingType === 'video' ? 'border-destructive text-destructive' : ''}`}
+              onClick={handleVideoRecording}
+              disabled={recordingType === 'audio'}
+            >
+              {recordingType === 'video' ? (
+                <>
+                  <StopCircle className="h-4 w-4" />
+                  Arrêter ({videoRecorder.duration}s)
+                </>
+              ) : (
+                <>
+                  <Video className="h-4 w-4" />
+                  Enregistrer vidéo
+                </>
+              )}
             </Button>
           </div>
           <input

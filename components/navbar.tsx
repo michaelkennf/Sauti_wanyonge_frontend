@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu-wrapper"
+} from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import { authService } from "@/lib/auth"
 import { useRouter } from "next/navigation"
@@ -23,8 +23,16 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [user, setUser] = useState<UserType | null>(null)
 
+  // S'assurer que le composant est monté côté client avant d'accéder à localStorage
   useEffect(() => {
-    setUser(authService.getCurrentUser())
+    if (typeof window !== 'undefined') {
+      try {
+        setUser(authService.getCurrentUser())
+      } catch (error) {
+        console.error('Erreur lors de la récupération de l\'utilisateur:', error)
+        setUser(null)
+      }
+    }
   }, [])
 
   const handleLogout = () => {
@@ -42,9 +50,9 @@ export function Navbar() {
             <Link href="/" className="flex items-center gap-2">
               <div className="flex items-center gap-3">
                 <div className="relative h-16 w-16 hover:scale-105 transition-transform duration-200">
-                  <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya Wayonge Logo" fill className="object-contain" />
+                  <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya Wa Nyonge Logo" fill className="object-contain" />
                 </div>
-                <span className="hidden md:block text-xl font-semibold text-foreground">Sauti ya Wayonge</span>
+                <span className="hidden md:block text-xl font-semibold text-foreground">Sauti ya Wa Nyonge</span>
               </div>
             </Link>
           </div>

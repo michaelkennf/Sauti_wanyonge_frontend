@@ -170,13 +170,55 @@ export default function NGOComplaintsPage() {
   const loadComplaints = async () => {
     setIsLoading(true)
     try {
-      // Simulation de chargement des données
-      setTimeout(() => {
-        setComplaints(mockComplaints)
-        setIsLoading(false)
-      }, 1000)
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+
+      const response = await fetch(`${API_URL}/complaints`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data?.data) {
+          // Transformer les données du backend au format attendu par le composant
+          const transformedComplaints = result.data.data.map((complaint: any) => ({
+            id: complaint.id,
+            trackingCode: complaint.trackingCode,
+            type: complaint.type === 'VICTIM_DIRECT' ? 'anonymous' : 'investigator',
+            status: complaint.status.toLowerCase(),
+            priority: complaint.priority.toLowerCase(),
+            incidentType: complaint.beneficiaryNatureOfFacts || 'Non spécifié',
+            date: new Date(complaint.createdAt).toISOString().split('T')[0],
+            location: `${complaint.geolocationProvince || ''}, ${complaint.geolocationTerritory || ''}`.trim() || 'Non spécifié',
+            province: complaint.geolocationProvince || '',
+            zone: `${complaint.geolocationProvince || ''} - ${complaint.geolocationTerritory || ''}`.trim(),
+            description: complaint.beneficiaryNatureOfFacts || '',
+            createdAt: new Date(complaint.createdAt),
+            updatedAt: new Date(complaint.updatedAt),
+            evidence: {
+              audioFiles: complaint._count?.evidence || 0,
+              videoFiles: 0,
+              imageFiles: 0,
+              documentFiles: 0,
+            },
+            services: complaint.services?.map((s: any) => s.serviceType) || [],
+          }))
+          setComplaints(transformedComplaints)
+        } else {
+          setComplaints([])
+        }
+      } else {
+        console.error('Erreur lors du chargement des plaintes')
+        setComplaints([])
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des plaintes:', error)
+      setComplaints([])
+    } finally {
       setIsLoading(false)
     }
   }

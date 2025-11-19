@@ -32,7 +32,7 @@ export function AwarenessBanner() {
           </h2>
 
           <p className="text-xl md:text-2xl text-white/95 leading-relaxed font-light">
-            Sauti ya Wayonge — la voix de la vérité, la force du changement
+            Sauti ya Wa Nyonge — la voix de la vérité, la force du changement
           </p>
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>

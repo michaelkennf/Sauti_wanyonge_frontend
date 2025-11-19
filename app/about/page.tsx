@@ -21,9 +21,9 @@ export default function AboutPage() {
               transition={{ duration: 0.6 }}
               className="max-w-4xl mx-auto text-center"
             >
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 text-balance">À propos de Sauti ya Wayonge</h1>
+              <h1 className="text-5xl md:text-6xl font-bold mb-6 text-balance">À propos de Sauti ya Wa Nyonge</h1>
               <p className="text-xl md:text-2xl leading-relaxed text-primary-foreground/90">
-                Sauti ya Wayonge est une plateforme nationale dédiée au signalement, à l'orientation et au suivi des
+                Sauti ya Wa Nyonge est une plateforme nationale dédiée au signalement, à l'orientation et au suivi des
                 victimes de violences sexuelles et des violences basées sur le genre en République démocratique du
                 Congo. Initiée pour garantir confidentialité, sécurité et accès rapide aux services d'assistance.
               </p>

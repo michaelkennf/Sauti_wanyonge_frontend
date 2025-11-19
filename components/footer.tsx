@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import { Phone, Mail, MapPin, Shield } from "lucide-react"
 import Image from "next/image"
@@ -11,9 +13,9 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="relative h-16 w-16">
-                <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya Wayonge Logo" fill className="object-contain" />
+                <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya Wa Nyonge Logo" fill className="object-contain" />
               </div>
-              <h3 className="text-xl font-semibold">Sauti ya Wayonge</h3>
+              <h3 className="text-xl font-semibold">Sauti ya Wa Nyonge</h3>
             </div>
             <p className="text-sm text-primary-foreground/80 leading-relaxed">
               Plateforme nationale de signalement et d'assistance aux victimes de violences sexuelles et basées sur le
@@ -148,7 +150,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-primary-foreground/20 text-center text-sm text-primary-foreground/80">
-          <p>&copy; {new Date().getFullYear()} Sauti ya Wayonge. Tous droits réservés.</p>
+          <p>&copy; {new Date().getFullYear()} Sauti ya Wa Nyonge. Tous droits réservés.</p>
         </div>
       </div>
     </footer>
