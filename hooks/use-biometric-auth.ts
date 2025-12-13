@@ -72,7 +72,7 @@ export function useBiometricAuth() {
         publicKey: {
           challenge: new Uint8Array(32), // Généré côté serveur
           rp: {
-            name: "Sauti ya Wa Nyonge",
+            name: "Sauti ya wa nyonge",
             id: window.location.hostname,
           },
           user: {

@@ -11,7 +11,7 @@ const questions = [
   "Où puis-je recevoir des soins médicaux ?",
   "Que faire après une agression ?",
   "Quels sont mes droits ?",
-  "Comment déposer une plainte ?",
+  "Comment signaler un cas ?",
 ]
 
 export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {

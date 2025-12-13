@@ -1,8 +1,8 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, FileText, BarChart3, Users, LogOut, X } from "lucide-react"
-import Link from "next/link"
+import { LayoutDashboard, FileText, BarChart3, Users, LogOut, X, TrendingUp } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 type AdminSidebarProps = {
   activeTab: string
@@ -12,11 +12,13 @@ type AdminSidebarProps = {
 }
 
 export function AdminSidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: AdminSidebarProps) {
+  const router = useRouter()
   const menuItems = [
     { id: "overview", label: "Vue d'ensemble", icon: LayoutDashboard },
     { id: "users", label: "Gestion des utilisateurs", icon: Users },
-    { id: "complaints", label: "Plaintes", icon: FileText },
+    { id: "complaints", label: "Cas signalés", icon: FileText },
     { id: "analytics", label: "Analyse IA", icon: BarChart3 },
+    { id: "violence-stats", label: "Statistiques de violence", icon: TrendingUp },
   ]
 
   return (
@@ -36,7 +38,7 @@ export function AdminSidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: Adm
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-foreground">Admin Panel</h2>
-                <p className="text-sm text-muted-foreground">Sauti ya Wa Nyonge</p>
+                <p className="text-sm text-muted-foreground">Sauti ya wa nyonge</p>
               </div>
               <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsOpen(false)}>
                 <X className="h-5 w-5" />
@@ -64,11 +66,17 @@ export function AdminSidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: Adm
 
           {/* Footer */}
           <div className="p-4 border-t border-border">
-            <Button asChild variant="outline" className="w-full gap-2 bg-transparent">
-              <Link href="/">
-                <LogOut className="h-4 w-4" />
-                Retour au site
-              </Link>
+            <Button 
+              variant="outline" 
+              className="w-full gap-2 bg-transparent"
+              onClick={() => {
+                localStorage.removeItem('admin_logged_in')
+                localStorage.removeItem('admin_token')
+                router.push('/auth/login-select')
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              Déconnexion
             </Button>
           </div>
         </div>

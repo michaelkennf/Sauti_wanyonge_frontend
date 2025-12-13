@@ -53,7 +53,7 @@ export default function BiometricVerificationPage() {
       const credential = await navigator.credentials.create({
         publicKey: {
           challenge: new Uint8Array(32),
-          rp: { name: "Sauti ya Wa Nyonge" },
+          rp: { name: "Sauti ya wa nyonge" },
           user: {
             id: new Uint8Array(16),
             name: "investigator",
@@ -240,7 +240,7 @@ export default function BiometricVerificationPage() {
               <div className="relative h-20 w-20">
                 <Image
                   src="/logo-sauti-ya-wayonge.png"
-                  alt="Sauti ya Wa Nyonge"
+                  alt="Sauti ya wa nyonge"
                   fill
                   className="object-contain"
                 />

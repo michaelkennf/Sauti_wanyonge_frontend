@@ -4,8 +4,9 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { authService, type User } from "@/lib/auth"
+import type { User } from "@/lib/auth"
 import { Spinner } from "@/components/ui/spinner"
+import { getCurrentUser, isAuthenticated } from "@/lib/auth-helpers"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -19,10 +20,10 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   useEffect(() => {
     const checkAuth = () => {
-      const isAuthenticated = authService.isAuthenticated()
-      const user = authService.getCurrentUser()
+      const authenticated = isAuthenticated()
+      const user = getCurrentUser()
 
-      if (!isAuthenticated || !user) {
+      if (!authenticated || !user) {
         router.push("/auth/login")
         return
       }

@@ -28,6 +28,9 @@ import {
   Loader2
 } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
+import { apiService } from "@/lib/api"
+import { handleApiError } from "@/lib/api-error-handler"
+import { useEffect } from "react"
 
 export default function AssuranceDashboardPage() {
   const { t } = useTranslation()
@@ -35,14 +38,45 @@ export default function AssuranceDashboardPage() {
   const [responseType, setResponseType] = useState("text")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiResponse, setAiResponse] = useState("")
+  const [stats, setStats] = useState({
+    totalComplaints: 0,
+    assistedInvestigations: 0,
+    urgentCases: 0,
+    completedCases: 0,
+    averageTime: "0 jours"
+  })
 
-  // Données simulées
-  const stats = {
-    totalComplaints: 1247,
-    assistedInvestigations: 892,
-    urgentCases: 156,
-    completedCases: 1034,
-    averageTime: "3.2 jours"
+  // Charger les statistiques depuis l'API
+  useEffect(() => {
+    loadStats()
+  }, [])
+
+  const loadStats = async () => {
+    try {
+      const dashboardStats = await apiService.getDashboardStats()
+      
+      // Calculer les statistiques
+      const totalComplaints = dashboardStats.totalComplaints || 0
+      const completedComplaints = dashboardStats.completedComplaints || 0
+      const pendingComplaints = dashboardStats.pendingComplaints || 0
+      const inProgressComplaints = dashboardStats.inProgressComplaints || 0
+      
+      // Calculer les enquêtes assistées (plaintes de type INVESTIGATOR_ASSISTED)
+      const assistedInvestigations = dashboardStats.complaintsByType?.find((t: any) => t.type === 'INVESTIGATOR_ASSISTED')?._count?.id || 0
+      
+      // Calculer les cas urgents (nécessite un appel API supplémentaire ou calculer depuis les données)
+      const urgentCases = 0 // À calculer depuis les données si disponibles
+      
+      setStats({
+        totalComplaints,
+        assistedInvestigations,
+        urgentCases,
+        completedCases: completedComplaints,
+        averageTime: "3.2 jours" // À calculer depuis les données réelles si disponibles
+      })
+    } catch (error) {
+      handleApiError(error, "Chargement des statistiques", false) // Pas de toast pour les stats
+    }
   }
 
   const suggestedQuestions = [
@@ -57,11 +91,16 @@ export default function AssuranceDashboardPage() {
 
     setIsAnalyzing(true)
     
-    // Simulation d'analyse IA
-    setTimeout(() => {
-      setAiResponse(`Analyse générée pour: "${aiQuestion}"\n\nRésultats simulés basés sur les données disponibles.`)
+    try {
+      // Appel API réel pour l'IA
+      const response = await apiService.askAI(aiQuestion, responseType)
+      setAiResponse(response.answer || response.text || `Analyse générée pour: "${aiQuestion}"`)
+    } catch (error) {
+      handleApiError(error, "Analyse IA", true)
+      setAiResponse(`Erreur lors de l'analyse. Veuillez réessayer.`)
+    } finally {
       setIsAnalyzing(false)
-    }, 2000)
+    }
   }
 
   return (

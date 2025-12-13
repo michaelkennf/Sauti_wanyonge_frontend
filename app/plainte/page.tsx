@@ -50,7 +50,7 @@ export default function ComplaintPage() {
         <div className="container mx-auto px-4 py-12">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Déposer une plainte</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Signaler un cas</h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
               Vos informations sont protégées et confidentielles. Complétez les étapes suivantes pour signaler un
               incident.

@@ -149,7 +149,7 @@ export function ChatInterface() {
     if (lowerMessage.includes("droits") || lowerMessage.includes("que faire")) {
       return {
         content:
-          "En tant que victime, vous avez plusieurs droits importants :\n\n• Le droit à la protection et à la sécurité\n• Le droit à des soins médicaux gratuits\n• Le droit à l'assistance juridique\n• Le droit à la confidentialité\n• Le droit de porter plainte\n\nVous pouvez déposer une plainte anonyme sur notre plateforme à tout moment. Souhaitez-vous que je vous guide dans cette démarche ?",
+          "En tant que victime, vous avez plusieurs droits importants :\n\n• Le droit à la protection et à la sécurité\n• Le droit à des soins médicaux gratuits\n• Le droit à l'assistance juridique\n• Le droit à la confidentialité\n• Le droit de signaler un cas\n\nVous pouvez signaler un cas anonyme sur notre plateforme à tout moment. Souhaitez-vous que je vous guide dans cette démarche ?",
         resources: [],
       }
     }
@@ -157,14 +157,14 @@ export function ChatInterface() {
     if (lowerMessage.includes("plainte") || lowerMessage.includes("signaler")) {
       return {
         content:
-          "Pour déposer une plainte, vous pouvez utiliser notre formulaire sécurisé. Le processus est simple :\n\n1. Choisissez si vous souhaitez rester anonyme\n2. Décrivez l'incident avec autant de détails que possible\n3. Recevez un code confidentiel pour suivre votre dossier\n\nVotre plainte sera traitée en toute confidentialité. Voulez-vous commencer maintenant ?",
+          "Pour signaler un cas, vous pouvez utiliser notre formulaire sécurisé. Le processus est simple :\n\n1. Choisissez si vous souhaitez rester anonyme\n2. Décrivez l'incident avec autant de détails que possible\n3. Recevez un code confidentiel pour suivre votre dossier\n\nVotre cas sera traité en toute confidentialité. Voulez-vous commencer maintenant ?",
         resources: [],
       }
     }
 
     return {
-      content:
-        "Je suis là pour vous aider. Je peux vous renseigner sur :\n\n• Les centres de santé et soins médicaux\n• L'assistance juridique et vos droits\n• Le soutien psychologique\n• Comment déposer une plainte\n• Les services disponibles près de chez vous\n\nN'hésitez pas à me poser vos questions.",
+        content:
+          "Je suis là pour vous aider. Je peux vous renseigner sur :\n\n• Les centres de santé et soins médicaux\n• L'assistance juridique et vos droits\n• Le soutien psychologique\n• Comment signaler un cas\n• Les services disponibles près de chez vous\n\nN'hésitez pas à me poser vos questions.",
       resources: [],
     }
   }

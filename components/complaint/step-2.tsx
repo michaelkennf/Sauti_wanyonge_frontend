@@ -14,6 +14,7 @@ import { useState, useRef, useEffect } from "react"
 import type { ComplaintData } from "@/app/plainte/page"
 import { useMediaRecorder } from "@/hooks/use-media-recorder"
 import { useToast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 type Step2Props = {
   data: Partial<ComplaintData>
@@ -25,13 +26,11 @@ type Step2Props = {
 const incidentTypes = [
   "Viol",
   "Harcèlement sexuel",
-  "Enlèvement",
-  "Menaces et intimidation",
+  "Zoophilie",
   "Mariage forcé",
-  "Détention illégale",
-  "Exploitation sexuelle",
-  "Violence domestique",
-  "Autre",
+  "Proxénétisme",
+  "Attentat à la pudeur",
+  "Autres crimes graves",
 ]
 
 const needsOptions = [
@@ -52,6 +51,8 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
   const [needs, setNeeds] = useState<string[]>(data.needs ?? [])
   const [recordingType, setRecordingType] = useState<'audio' | 'video' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showOtherCrimesDialog, setShowOtherCrimesDialog] = useState(false)
+  const [otherCrimesDetails, setOtherCrimesDetails] = useState("")
   
   // Hook pour l'enregistrement audio
   const audioRecorder = useMediaRecorder({ maxDuration: 35, audioOnly: true })
@@ -140,6 +141,20 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
     setNeeds((prev) => (prev.includes(need) ? prev.filter((n) => n !== need) : [...prev, need]))
   }
 
+  const handleOtherCrimesConfirm = () => {
+    if (!otherCrimesDetails.trim()) {
+      toast({
+        title: "Champ requis",
+        description: "Veuillez préciser de quel type de crime grave il s'agit.",
+        variant: "destructive"
+      })
+      return
+    }
+    setIncidentType(`Autres crimes graves: ${otherCrimesDetails}`)
+    setShowOtherCrimesDialog(false)
+    setOtherCrimesDetails("")
+  }
+
   const handleNext = () => {
     if (!incidentType || !date || !location || !description) {
       alert("Veuillez remplir tous les champs obligatoires")
@@ -159,7 +174,7 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
   return (
     <Card className="border-border/50 shadow-lg">
       <CardHeader>
-        <CardTitle className="text-2xl">Détails de la plainte</CardTitle>
+        <CardTitle className="text-2xl">Détails du cas</CardTitle>
         <CardDescription>
           Fournissez autant d'informations que possible pour nous aider à traiter votre cas.
         </CardDescription>
@@ -169,7 +184,16 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
           <Label htmlFor="incidentType">
             Type d'incident <span className="text-destructive">*</span>
           </Label>
-          <Select value={incidentType} onValueChange={setIncidentType}>
+          <Select 
+            value={incidentType} 
+            onValueChange={(value) => {
+              if (value === "Autres crimes graves") {
+                setShowOtherCrimesDialog(true)
+              } else {
+                setIncidentType(value)
+              }
+            }}
+          >
             <SelectTrigger id="incidentType">
               <SelectValue placeholder="Sélectionnez le type d'incident" />
             </SelectTrigger>
@@ -314,6 +338,47 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
           </Button>
         </div>
       </CardContent>
+
+      {/* Dialog pour "Autres crimes graves" */}
+      <Dialog open={showOtherCrimesDialog} onOpenChange={setShowOtherCrimesDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Préciser le type de crime grave</DialogTitle>
+            <DialogDescription>
+              Veuillez décrire de quel type de crime grave il s'agit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="otherCrimesDetails">
+                Détails du crime <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="otherCrimesDetails"
+                placeholder="Ex: Traite des personnes, Torture, Assassinat, etc."
+                value={otherCrimesDetails}
+                onChange={(e) => setOtherCrimesDetails(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowOtherCrimesDialog(false)
+                setOtherCrimesDetails("")
+              }}
+            >
+              Annuler
+            </Button>
+            <Button onClick={handleOtherCrimesConfirm}>
+              Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

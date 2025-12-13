@@ -109,6 +109,9 @@ export function UserManagement() {
   ])
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isFingerprintDialogOpen, setIsFingerprintDialogOpen] = useState(false)
+  const [fingerprintCaptured, setFingerprintCaptured] = useState(false)
+  const [isCapturingFingerprint, setIsCapturingFingerprint] = useState(false)
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -136,11 +139,44 @@ export function UserManagement() {
     })
   }
 
+  const handleCaptureFingerprint = async () => {
+    setIsCapturingFingerprint(true)
+    
+    try {
+      // Simulation de la capture d'empreinte digitale
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      setFingerprintCaptured(true)
+      toast({
+        title: "Empreinte capturée",
+        description: "L'empreinte digitale a été enregistrée avec succès",
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de capturer l'empreinte digitale",
+        variant: "destructive"
+      })
+    } finally {
+      setIsCapturingFingerprint(false)
+    }
+  }
+
   const handleCreateUser = () => {
     if (!newUser.name || !newUser.email) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Si c'est un enquêteur, vérifier que l'empreinte a été capturée
+    if (newUser.role === 'investigator' && !fingerprintCaptured) {
+      toast({
+        title: "Empreinte requise",
+        description: "Vous devez capturer l'empreinte digitale de l'enquêteur avant de créer le compte",
         variant: "destructive"
       })
       return
@@ -162,7 +198,7 @@ export function UserManagement() {
         ...user,
         badgeNumber: newUser.badgeNumber,
         department: newUser.department,
-        biometricRegistered: false
+        biometricRegistered: fingerprintCaptured
       }
       setInvestigators([...investigators, investigator])
     } else if (newUser.role === 'ngo') {
@@ -188,6 +224,7 @@ export function UserManagement() {
     })
 
     setIsCreateDialogOpen(false)
+    setFingerprintCaptured(false)
     setNewUser({
       name: '',
       email: '',
@@ -281,26 +318,55 @@ export function UserManagement() {
               </div>
 
               {newUser.role === 'investigator' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="badgeNumber">Numéro de badge</Label>
-                    <Input
-                      id="badgeNumber"
-                      value={newUser.badgeNumber}
-                      onChange={(e) => setNewUser({ ...newUser, badgeNumber: e.target.value })}
-                      placeholder="INV-001"
-                    />
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="badgeNumber">Numéro de badge</Label>
+                      <Input
+                        id="badgeNumber"
+                        value={newUser.badgeNumber}
+                        onChange={(e) => setNewUser({ ...newUser, badgeNumber: e.target.value })}
+                        placeholder="INV-001"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="department">Département</Label>
+                      <Input
+                        id="department"
+                        value={newUser.department}
+                        onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
+                        placeholder="Police Nationale"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="department">Département</Label>
-                    <Input
-                      id="department"
-                      value={newUser.department}
-                      onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
-                      placeholder="Police Nationale"
-                    />
+                  
+                  {/* Capture d'empreinte digitale */}
+                  <div className="space-y-2 border rounded-lg p-4">
+                    <Label>Empreinte digitale *</Label>
+                    <div className="flex items-center gap-4">
+                      {fingerprintCaptured ? (
+                        <div className="flex items-center gap-2 text-green-600">
+                          <Fingerprint className="h-5 w-5" />
+                          <span className="text-sm font-medium">Empreinte capturée</span>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleCaptureFingerprint}
+                          disabled={isCapturingFingerprint}
+                          className="gap-2"
+                        >
+                          <Fingerprint className="h-4 w-4" />
+                          {isCapturingFingerprint ? "Capture en cours..." : "Capturer l'empreinte"}
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      L'empreinte digitale est obligatoire pour créer un compte enquêteur
+                    </p>
                   </div>
-                </div>
+                </>
               )}
 
               {newUser.role === 'ngo' && (

@@ -13,9 +13,9 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="relative h-16 w-16">
-                <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya Wa Nyonge Logo" fill className="object-contain" />
+                <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya wa nyonge Logo" fill className="object-contain" />
               </div>
-              <h3 className="text-xl font-semibold">Sauti ya Wa Nyonge</h3>
+              <h3 className="text-xl font-semibold">Sauti ya wa nyonge</h3>
             </div>
             <p className="text-sm text-primary-foreground/80 leading-relaxed">
               Plateforme nationale de signalement et d'assistance aux victimes de violences sexuelles et basées sur le
@@ -32,7 +32,7 @@ export function Footer() {
                   href="/plainte"
                   className="text-primary-foreground/80 hover:text-primary-foreground transition-colors"
                 >
-                  Déposer une plainte
+                  Signaler un cas
                 </Link>
               </li>
               <li>
@@ -125,32 +125,61 @@ export function Footer() {
         <div className="mt-4 pt-8 border-t border-primary-foreground/20">
           <h3 className="text-center text-lg font-semibold mb-6">Nos Partenaires</h3>
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-            <div className="h-20 flex items-center justify-center transition-transform hover:scale-110 duration-300">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/rdc-T61e4MfAqibYSfXUqeNUMi2RQkbaDr.png"
-                alt="Gouvernement de la République Démocratique du Congo"
-                className="h-full w-auto object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+            <div className="h-20 w-20 flex items-center justify-center transition-transform hover:scale-110 duration-300">
+              <Image
+                src="/BCNUDH.jpeg"
+                alt="BCNUDH - Bureau Conjoint des Nations Unies aux Droits de l'Homme"
+                width={80}
+                height={80}
+                className="h-full w-full object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+                unoptimized
               />
             </div>
-            <div className="h-20 flex items-center justify-center transition-transform hover:scale-110 duration-300">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/fonarev-tUSviZpD7w4th3RistQYLyW6cxpQJE.jpeg"
-                alt="FONAREV - Fonds National pour la Réparation des Victimes"
-                className="h-full w-auto object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+            <div className="h-20 w-20 flex items-center justify-center transition-transform hover:scale-110 duration-300">
+              <Image
+                src="/UNICEF.png"
+                alt="UNICEF - Fonds des Nations Unies pour l'Enfance"
+                width={80}
+                height={80}
+                className="h-full w-full object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+                unoptimized
               />
             </div>
-            <div className="h-20 flex items-center justify-center transition-transform hover:scale-110 duration-300">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-05-16%20%C3%A0%2020.56.29_cfa01b3c-2M8Gpc0uTQof3oQ7ljaEwMVjdAEi2K.jpg"
+            <div className="h-20 w-20 flex items-center justify-center transition-transform hover:scale-110 duration-300">
+              <Image
+                src="/unfa.png"
+                alt="UNFPA - Fonds des Nations Unies pour la Population"
+                width={80}
+                height={80}
+                className="h-full w-full object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+                unoptimized
+              />
+            </div>
+            <div className="h-20 w-20 flex items-center justify-center transition-transform hover:scale-110 duration-300">
+              <Image
+                src="/onu_femme.png"
+                alt="ONU Femmes - Entité des Nations Unies pour l'égalité des sexes et l'autonomisation des femmes"
+                width={80}
+                height={80}
+                className="h-full w-full object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+                unoptimized
+              />
+            </div>
+            <div className="h-20 w-20 flex items-center justify-center transition-transform hover:scale-110 duration-300">
+              <Image
+                src="/pnud.png"
                 alt="PNUD - Programme des Nations Unies pour le Développement RDC"
-                className="h-full w-auto object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+                width={80}
+                height={80}
+                className="h-full w-full object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+                unoptimized
               />
             </div>
           </div>
         </div>
 
         <div className="mt-8 pt-8 border-t border-primary-foreground/20 text-center text-sm text-primary-foreground/80">
-          <p>&copy; {new Date().getFullYear()} Sauti ya Wa Nyonge. Tous droits réservés.</p>
+          <p>&copy; {new Date().getFullYear()} Sauti ya wa nyonge. Tous droits réservés.</p>
         </div>
       </div>
     </footer>

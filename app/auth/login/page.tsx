@@ -70,7 +70,7 @@ export default function LoginPage() {
                 <div className="relative h-16 w-16">
                   <Image
                     src="/logo-sauti-ya-wayonge.png"
-                    alt="Sauti ya Wa Nyonge"
+                    alt="Sauti ya wa nyonge"
                     fill
                     className="object-contain"
                   />

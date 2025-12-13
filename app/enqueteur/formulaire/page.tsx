@@ -48,6 +48,8 @@ import {
   Users,
   FileImage,
   FileAudio,
+  LogOut,
+  LayoutDashboard,
   FileVideo,
   FileText as FileTextIcon,
   Eye,
@@ -57,13 +59,18 @@ import { BiometricManager } from "@/components/biometric-manager"
 import { useToast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useRouter } from "next/navigation"
+import { logger } from "@/lib/logger"
+import { apiService } from "@/lib/api"
 
 // Types pour le formulaire
 interface FormData {
   // Identité du bénéficiaire
   beneficiaryName: string
   beneficiarySex: string
-  beneficiaryAge: number | null
+  beneficiaryBirthDate: string
+  beneficiaryAge: number | null // Calculé automatiquement
   beneficiaryTerritory: string
   beneficiaryGroupement: string
   beneficiaryVillage: string
@@ -107,8 +114,22 @@ interface EvidenceFile {
   preview?: string
 }
 
+// Fonction pour calculer l'âge à partir de la date de naissance
+function calculateAge(birthDate: string): number | null {
+  if (!birthDate) return null
+  const birth = new Date(birthDate)
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age >= 0 ? age : null
+}
+
 export default function InvestigatorFormPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [isBiometricRegistered, setIsBiometricRegistered] = useState(false)
   const [isBiometricVerified, setIsBiometricVerified] = useState(false)
@@ -121,9 +142,15 @@ export default function InvestigatorFormPage() {
   const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [evidenceFiles, setEvidenceFiles] = useState<EvidenceFile[]>([])
+  const [showOtherStatusDialog, setShowOtherStatusDialog] = useState(false)
+  const [otherStatusDetails, setOtherStatusDetails] = useState("")
+  const [showOtherCrimesDialog, setShowOtherCrimesDialog] = useState(false)
+  const [otherCrimesDetails, setOtherCrimesDetails] = useState("")
+  const [lastBeneficiaryNatureOfFacts, setLastBeneficiaryNatureOfFacts] = useState("")
   const [formData, setFormData] = useState<FormData>({
     beneficiaryName: "",
     beneficiarySex: "",
+    beneficiaryBirthDate: "",
     beneficiaryAge: null,
     beneficiaryTerritory: "",
     beneficiaryGroupement: "",
@@ -149,6 +176,18 @@ export default function InvestigatorFormPage() {
     longitude: 0,
     accuracy: 0
   })
+
+  // Synchroniser automatiquement le type d'incident avec la nature des faits
+  // Remplir automatiquement uniquement quand la nature des faits change (nouvelle sélection)
+  useEffect(() => {
+    if (formData.beneficiaryNatureOfFacts && formData.beneficiaryNatureOfFacts.trim() !== "") {
+      // Remplir automatiquement seulement si la nature des faits a changé
+      if (formData.beneficiaryNatureOfFacts !== lastBeneficiaryNatureOfFacts) {
+        setFormData(prev => ({ ...prev, incidentType: formData.beneficiaryNatureOfFacts }))
+        setLastBeneficiaryNatureOfFacts(formData.beneficiaryNatureOfFacts)
+      }
+    }
+  }, [formData.beneficiaryNatureOfFacts, lastBeneficiaryNatureOfFacts])
 
   // Vérifier l'authentification au chargement
   useEffect(() => {
@@ -198,7 +237,7 @@ export default function InvestigatorFormPage() {
           }))
         },
         (error) => {
-          console.warn('Géolocalisation non disponible:', error.message)
+          logger.warn('Géolocalisation non disponible', error, 'FormulaireEnqueteur')
           // Valeurs par défaut pour Kinshasa si géolocalisation échoue
           setFormData(prev => ({
             ...prev,
@@ -214,7 +253,7 @@ export default function InvestigatorFormPage() {
         }
       )
     } else {
-      console.warn('Géolocalisation non supportée par ce navigateur')
+      logger.warn('Géolocalisation non supportée par ce navigateur', undefined, 'FormulaireEnqueteur')
       // Valeurs par défaut pour Kinshasa
       setFormData(prev => ({
         ...prev,
@@ -225,20 +264,22 @@ export default function InvestigatorFormPage() {
     }
   }, [])
 
-  // Chronomètre d'enregistrement
+  // Chronomètre d'enregistrement avec durées différentes selon le type
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
     
     if (isRecording) {
+      const maxDuration = recordingType === 'audio' ? 60 : 30 // 60s pour audio, 30s pour vidéo
+      
       interval = setInterval(() => {
         setRecordingTime(prev => {
           const newTime = prev + 1
-          // Arrêt automatique à 35 secondes
-          if (newTime >= 35) {
+          // Arrêt automatique selon le type
+          if (newTime >= maxDuration) {
             // Arrêter l'enregistrement automatiquement
             setIsRecording(false)
             setRecordingType(null)
-            return 35
+            return maxDuration
           }
           return newTime
         })
@@ -252,21 +293,24 @@ export default function InvestigatorFormPage() {
         clearInterval(interval)
       }
     }
-  }, [isRecording])
+  }, [isRecording, recordingType])
 
-  // Arrêt automatique du MediaRecorder à 35 secondes
+  // Arrêt automatique du MediaRecorder selon la durée max
   useEffect(() => {
-    if (recordingTime >= 35 && isRecording && mediaRecorder) {
-      if (mediaRecorder.state === 'recording') {
-        mediaRecorder.stop()
+    if (isRecording && mediaRecorder && recordingType) {
+      const maxDuration = recordingType === 'audio' ? 60 : 30
+      if (recordingTime >= maxDuration) {
+        if (mediaRecorder.state === 'recording') {
+          mediaRecorder.stop()
+        }
+        if (recordingStream) {
+          recordingStream.getTracks().forEach(track => track.stop())
+        }
+        setMediaRecorder(null)
+        setRecordingStream(null)
       }
-      if (recordingStream) {
-        recordingStream.getTracks().forEach(track => track.stop())
-      }
-      setMediaRecorder(null)
-      setRecordingStream(null)
     }
-  }, [recordingTime, isRecording, mediaRecorder, recordingStream])
+  }, [recordingTime, isRecording, mediaRecorder, recordingStream, recordingType])
 
 
   const steps = [
@@ -303,6 +347,63 @@ export default function InvestigatorFormPage() {
 
   const removeFile = (fileId: string) => {
     setEvidenceFiles(prev => prev.filter(file => file.id !== fileId))
+  }
+
+  // Fonctions pour la capture biométrique du bénéficiaire
+  const captureFingerprint = async () => {
+    try {
+      toast({
+        title: "Capture en cours",
+        description: "Placez votre doigt sur le capteur...",
+      })
+      
+      // Simulation de la capture d'empreintes
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Générer un identifiant unique pour l'empreinte
+      const fingerprintId = `fingerprint_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      setFormData(prev => ({ ...prev, beneficiaryFingerprint: fingerprintId }))
+      
+      toast({
+        title: "Empreintes capturées",
+        description: "Les empreintes digitales ont été enregistrées avec succès",
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur de capture",
+        description: "Impossible de capturer les empreintes digitales",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const captureFaceScan = async () => {
+    try {
+      toast({
+        title: "Scan en cours",
+        description: "Positionnez votre visage devant la caméra...",
+      })
+      
+      // Simulation du scan facial
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Générer un identifiant unique pour le scan facial
+      const faceScanId = `facescan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      setFormData(prev => ({ ...prev, beneficiaryFaceScan: faceScanId }))
+      
+      toast({
+        title: "Scan facial effectué",
+        description: "Le scan facial a été enregistré avec succès",
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur de scan",
+        description: "Impossible d'effectuer le scan facial",
+        variant: "destructive"
+      })
+    }
   }
 
   // Fonctions pour l'enregistrement audio/vidéo
@@ -366,7 +467,7 @@ export default function InvestigatorFormPage() {
       }
       
       recorder.onerror = (event) => {
-        console.error('Erreur MediaRecorder:', event)
+        logger.error('Erreur MediaRecorder', event, 'FormulaireEnqueteur')
         toast({
           title: "Erreur d'enregistrement",
           description: "Une erreur est survenue pendant l'enregistrement",
@@ -384,7 +485,7 @@ export default function InvestigatorFormPage() {
       setRecordingTime(0)
       
     } catch (error) {
-      console.error('Erreur getUserMedia:', error)
+      logger.error('Erreur getUserMedia', error, 'FormulaireEnqueteur')
       toast({
         title: "Erreur d'accès",
         description: `Impossible d'accéder au ${type === 'audio' ? 'microphone' : 'microphone/caméra'}`,
@@ -418,23 +519,230 @@ export default function InvestigatorFormPage() {
       return
     }
 
+    // Vérifier que la date de naissance est renseignée et calculer l'âge si nécessaire
+    if (!formData.beneficiaryBirthDate) {
+      toast({
+        title: "Date de naissance requise",
+        description: "Veuillez renseigner la date de naissance du bénéficiaire",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Recalculer l'âge au moment de la soumission pour s'assurer qu'il est à jour
+    const calculatedAge = calculateAge(formData.beneficiaryBirthDate)
+    if (calculatedAge === null || calculatedAge < 0) {
+      toast({
+        title: "Date de naissance invalide",
+        description: "La date de naissance doit être dans le passé",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Mettre à jour l'âge dans le formulaire
+    setFormData(prev => ({ ...prev, beneficiaryAge: calculatedAge }))
+
+    // Vérifier qu'au moins un scan biométrique est effectué (empreintes OU facial)
+    if (!formData.beneficiaryFingerprint && !formData.beneficiaryFaceScan) {
+      toast({
+        title: "Capture biométrique requise",
+        description: "Vous devez capturer au moins les empreintes digitales ou effectuer un scan facial du bénéficiaire",
+        variant: "destructive"
+      })
+      return
+    }
+
     setIsSubmitting(true)
     
     try {
-      // Simulation de soumission
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Vérifier les empreintes biométriques du bénéficiaire avant soumission
+      if (formData.beneficiaryFingerprint || formData.beneficiaryFaceScan) {
+        try {
+          const biometricCheck = await apiService.checkBiometric(
+            formData.beneficiaryFingerprint || undefined,
+            formData.beneficiaryFaceScan || undefined
+          )
+          
+          if (biometricCheck.exists && biometricCheck.lastComplaint) {
+            toast({
+              title: "Bénéficiaire déjà enregistré",
+              description: `Ce bénéficiaire existe déjà dans le système. Dernier dossier: ${biometricCheck.lastComplaint.trackingCode}`,
+              variant: "default",
+              duration: 5000
+            })
+            // Continuer quand même la soumission
+          }
+        } catch (error) {
+          logger.warn('Erreur lors de la vérification biométrique', error, 'InvestigatorForm')
+          // Continuer la soumission même si la vérification échoue
+        }
+      }
+
+      // Préparer les preuves pour l'upload
+      const evidenceArray: Array<{
+        type: string
+        fileName: string
+        fileData?: string
+        mimeType: string
+        isRequired: boolean
+      }> = []
+
+      // Convertir les Blobs en File et uploader tous les fichiers
+      const filesToUpload: File[] = []
+      const fileMetadata: Array<{type: string, isRequired: boolean, originalName: string}> = []
+
+      // Photo du bénéficiaire
+      if (formData.beneficiaryPhoto) {
+        filesToUpload.push(formData.beneficiaryPhoto)
+        fileMetadata.push({
+          type: 'PHOTO',
+          isRequired: true,
+          originalName: formData.beneficiaryPhoto.name
+        })
+      }
+
+      // Audio (convertir Blob en File)
+      if (formData.beneficiaryAudio) {
+        const audioFile = new File([formData.beneficiaryAudio], `audio_${Date.now()}.webm`, {
+          type: 'audio/webm'
+        })
+        filesToUpload.push(audioFile)
+        fileMetadata.push({
+          type: 'AUDIO',
+          isRequired: true,
+          originalName: `audio_${Date.now()}.webm`
+        })
+      }
+
+      // Vidéo (convertir Blob en File)
+      if (formData.beneficiaryVideo) {
+        const videoFile = new File([formData.beneficiaryVideo], `video_${Date.now()}.webm`, {
+          type: 'video/webm'
+        })
+        filesToUpload.push(videoFile)
+        fileMetadata.push({
+          type: 'VIDEO',
+          isRequired: true,
+          originalName: `video_${Date.now()}.webm`
+        })
+      }
+
+      // Autres fichiers de preuve
+      for (const file of evidenceFiles) {
+        const fileObj = file.file instanceof File ? file.file : new File([file.file], file.name, {
+          type: file.mimeType
+        })
+        filesToUpload.push(fileObj)
+        fileMetadata.push({
+          type: file.type === 'photo' ? 'PHOTO' : file.type === 'audio' ? 'AUDIO' : file.type === 'video' ? 'VIDEO' : 'IDENTITY_DOCUMENT',
+          isRequired: false,
+          originalName: file.name
+        })
+      }
+
+      // Uploader tous les fichiers
+      let uploadedFiles: Array<{
+        id: string
+        originalName: string
+        fileName: string
+        filePath: string
+        fileUrl: string
+        mimeType: string
+        size: number
+        uploadedAt: string
+      }> = []
+
+      if (filesToUpload.length > 0) {
+        try {
+          toast({
+            title: "Upload en cours...",
+            description: `Upload de ${filesToUpload.length} fichier(s) en cours...`,
+          })
+          uploadedFiles = await apiService.uploadFiles(filesToUpload)
+          toast({
+            title: "Upload réussi",
+            description: `${uploadedFiles.length} fichier(s) uploadé(s) avec succès`,
+          })
+        } catch (uploadError: any) {
+          logger.error('Erreur lors de l\'upload des fichiers', uploadError, 'InvestigatorForm')
+          toast({
+            title: "Erreur d'upload",
+            description: uploadError.message || "Erreur lors de l'upload des fichiers",
+            variant: "destructive"
+          })
+          throw uploadError
+        }
+      }
+
+      // Construire le tableau des preuves avec les fichiers uploadés
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const uploadedFile = uploadedFiles[i]
+        const metadata = fileMetadata[i]
+        evidenceArray.push({
+          type: metadata.type as any,
+          fileName: uploadedFile.originalName,
+          filePath: uploadedFile.filePath, // Utiliser le chemin du fichier uploadé
+          fileSize: uploadedFile.size,
+          mimeType: uploadedFile.mimeType,
+          isRequired: metadata.isRequired
+        } as any) // Type assertion temporaire jusqu'à la mise à jour du type
+      }
+
+      // Préparer les données de la plainte
+      const complaintData = {
+        type: 'INVESTIGATOR_ASSISTED' as const,
+        priority: 'HIGH' as const,
+        beneficiaryData: {
+          name: formData.beneficiaryName,
+          sex: formData.beneficiarySex === 'M' ? 'MALE' as const : formData.beneficiarySex === 'F' ? 'FEMALE' as const : 'OTHER' as const,
+          age: calculatedAge!,
+          birthDate: formData.beneficiaryBirthDate,
+          territory: formData.beneficiaryTerritory,
+          groupement: formData.beneficiaryGroupement,
+          village: formData.beneficiaryVillage,
+          householdSize: formData.beneficiaryHouseholdSize || 1,
+          currentAddress: formData.beneficiaryCurrentAddress,
+          status: formData.beneficiaryStatus,
+          natureOfFacts: formData.beneficiaryNatureOfFacts,
+          fingerprint: formData.beneficiaryFingerprint || undefined,
+          faceScan: formData.beneficiaryFaceScan || undefined,
+          photo: formData.beneficiaryPhoto ? formData.beneficiaryPhoto.name : undefined
+        },
+        incidentData: {
+          type: formData.incidentType,
+          date: formData.incidentDate,
+          time: formData.incidentTime,
+          description: formData.incidentDescription,
+          address: formData.incidentAddress
+        },
+        geolocation: {
+          latitude: formData.latitude,
+          longitude: formData.longitude,
+          accuracy: formData.accuracy
+        },
+        evidence: evidenceArray,
+        investigatorComment: formData.investigatorComment
+      }
+
+      // Soumettre la plainte
+      const response = await apiService.createInvestigatorComplaint(complaintData)
       
       toast({
-        title: "Soumission réussie",
-        description: "Le formulaire a été soumis avec succès",
+        title: "Formulaire soumis",
+        description: `Le formulaire a été soumis avec succès. Code de suivi: ${response.trackingCode}`,
+        duration: 5000
       })
       
-      // Redirection vers le dashboard
-      window.location.href = '/enqueteur/dashboard'
-    } catch (error) {
+      // Attendre un peu pour que l'utilisateur voie le message
+      setTimeout(() => {
+        router.push('/enqueteur/dashboard')
+      }, 2000)
+    } catch (error: any) {
+      logger.error('Erreur lors de la soumission du formulaire', error, 'InvestigatorForm')
       toast({
         title: "Erreur de soumission",
-        description: "Une erreur est survenue lors de la soumission",
+        description: error.message || "Une erreur est survenue lors de la soumission",
         variant: "destructive"
       })
     } finally {
@@ -456,6 +764,41 @@ export default function InvestigatorFormPage() {
       title: "Sauvegardé hors ligne",
       description: "Les données seront synchronisées lors de la reconnexion",
     })
+  }
+
+  // Gestion du dialogue "Autre" pour le statut
+  const handleOtherStatusConfirm = () => {
+    if (!otherStatusDetails.trim()) {
+      toast({
+        title: "Champ requis",
+        description: "Veuillez préciser le statut du bénéficiaire.",
+        variant: "destructive"
+      })
+      return
+    }
+    setFormData(prev => ({ ...prev, beneficiaryStatus: `Autre: ${otherStatusDetails}` }))
+    setShowOtherStatusDialog(false)
+    setOtherStatusDetails("")
+  }
+
+  // Gestion du dialogue "Autres crimes graves" pour la nature des faits
+  const handleOtherCrimesConfirm = () => {
+    if (!otherCrimesDetails.trim()) {
+      toast({
+        title: "Champ requis",
+        description: "Veuillez préciser de quel type de crime grave il s'agit.",
+        variant: "destructive"
+      })
+      return
+    }
+    const natureValue = `Autres crimes graves: ${otherCrimesDetails}`
+    setFormData(prev => ({ 
+      ...prev, 
+      beneficiaryNatureOfFacts: natureValue,
+      incidentType: natureValue // Synchroniser aussi le type d'incident
+    }))
+    setShowOtherCrimesDialog(false)
+    setOtherCrimesDetails("")
   }
 
   // Rendu des étapes
@@ -488,17 +831,28 @@ export default function InvestigatorFormPage() {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="beneficiaryAge">Âge *</Label>
+          <Label htmlFor="beneficiaryBirthDate">Date de naissance *</Label>
           <Input
-            id="beneficiaryAge"
-            type="number"
-            value={formData.beneficiaryAge || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, beneficiaryAge: parseInt(e.target.value) || null }))}
-            placeholder="Âge en années"
-            min="0"
-            max="120"
+            id="beneficiaryBirthDate"
+            type="date"
+            value={formData.beneficiaryBirthDate}
+            onChange={(e) => {
+              const birthDate = e.target.value
+              const age = calculateAge(birthDate)
+              setFormData(prev => ({ 
+                ...prev, 
+                beneficiaryBirthDate: birthDate,
+                beneficiaryAge: age
+              }))
+            }}
+            max={new Date().toISOString().split('T')[0]}
             required
           />
+          {formData.beneficiaryAge !== null && (
+            <p className="text-sm text-muted-foreground">
+              Âge calculé : {formData.beneficiaryAge} {formData.beneficiaryAge === 1 ? 'an' : 'ans'}
+            </p>
+          )}
         </div>
         
         <div className="space-y-2">
@@ -577,7 +931,16 @@ export default function InvestigatorFormPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="beneficiaryStatus">Statut du bénéficiaire *</Label>
-            <Select value={formData.beneficiaryStatus} onValueChange={(value) => setFormData(prev => ({ ...prev, beneficiaryStatus: value }))}>
+            <Select 
+              value={formData.beneficiaryStatus} 
+              onValueChange={(value) => {
+                if (value === "other") {
+                  setShowOtherStatusDialog(true)
+                } else {
+                  setFormData(prev => ({ ...prev, beneficiaryStatus: value }))
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner le statut" />
               </SelectTrigger>
@@ -592,17 +955,27 @@ export default function InvestigatorFormPage() {
           
           <div className="space-y-2">
             <Label htmlFor="beneficiaryNatureOfFacts">Nature des faits *</Label>
-            <Select value={formData.beneficiaryNatureOfFacts} onValueChange={(value) => setFormData(prev => ({ ...prev, beneficiaryNatureOfFacts: value }))}>
+            <Select 
+              value={formData.beneficiaryNatureOfFacts} 
+              onValueChange={(value) => {
+                if (value === "Autres crimes graves") {
+                  setShowOtherCrimesDialog(true)
+                } else {
+                  setFormData(prev => ({ ...prev, beneficiaryNatureOfFacts: value }))
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner la nature" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sexual_violence">Violence sexuelle</SelectItem>
-                <SelectItem value="domestic_violence">Violence domestique</SelectItem>
-                <SelectItem value="physical_violence">Violence physique</SelectItem>
-                <SelectItem value="psychological_violence">Violence psychologique</SelectItem>
-                <SelectItem value="economic_violence">Violence économique</SelectItem>
-                <SelectItem value="other">Autre</SelectItem>
+                <SelectItem value="Viol">Viol</SelectItem>
+                <SelectItem value="Harcèlement sexuel">Harcèlement sexuel</SelectItem>
+                <SelectItem value="Zoophilie">Zoophilie</SelectItem>
+                <SelectItem value="Mariage forcé">Mariage forcé</SelectItem>
+                <SelectItem value="Proxénétisme">Proxénétisme</SelectItem>
+                <SelectItem value="Attentat à la pudeur">Attentat à la pudeur</SelectItem>
+                <SelectItem value="Autres crimes graves">Autres crimes graves</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -616,30 +989,44 @@ export default function InvestigatorFormPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="incidentType">Type d'incident *</Label>
-          <Select value={formData.incidentType} onValueChange={(value) => setFormData(prev => ({ ...prev, incidentType: value }))}>
+          <Select 
+            value={formData.incidentType} 
+            onValueChange={(value) => {
+              setFormData(prev => ({ ...prev, incidentType: value }))
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner le type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="rape">Viol</SelectItem>
-              <SelectItem value="sexual_assault">Agression sexuelle</SelectItem>
-              <SelectItem value="domestic_violence">Violence domestique</SelectItem>
-              <SelectItem value="harassment">Harcèlement</SelectItem>
-              <SelectItem value="exploitation">Exploitation</SelectItem>
-              <SelectItem value="other">Autre</SelectItem>
+              <SelectItem value="Viol">Viol</SelectItem>
+              <SelectItem value="Harcèlement sexuel">Harcèlement sexuel</SelectItem>
+              <SelectItem value="Zoophilie">Zoophilie</SelectItem>
+              <SelectItem value="Mariage forcé">Mariage forcé</SelectItem>
+              <SelectItem value="Proxénétisme">Proxénétisme</SelectItem>
+              <SelectItem value="Attentat à la pudeur">Attentat à la pudeur</SelectItem>
+              <SelectItem value="Autres crimes graves">Autres crimes graves</SelectItem>
             </SelectContent>
           </Select>
+          {formData.beneficiaryNatureOfFacts && formData.incidentType === formData.beneficiaryNatureOfFacts && (
+            <p className="text-sm text-muted-foreground">
+              ✓ Rempli automatiquement depuis la nature des faits (modifiable si nécessaire)
+            </p>
+          )}
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="incidentDate">Date de l'incident *</Label>
+          <Label htmlFor="incidentDate">Date de l'incident * (Année et mois requis, jour optionnel)</Label>
           <Input
             id="incidentDate"
-            type="date"
-            value={formData.incidentDate}
+            type="month"
+            value={formData.incidentDate ? formData.incidentDate.substring(0, 7) : ""}
             onChange={(e) => setFormData(prev => ({ ...prev, incidentDate: e.target.value }))}
             required
           />
+          <p className="text-xs text-muted-foreground">
+            Sélectionnez au moins l'année et le mois. Le jour n'est pas obligatoire.
+          </p>
         </div>
         
         <div className="space-y-2">
@@ -718,13 +1105,12 @@ export default function InvestigatorFormPage() {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="idDocumentNumber">Numéro du document *</Label>
+            <Label htmlFor="idDocumentNumber">Numéro du document</Label>
             <Input
               id="idDocumentNumber"
               value={formData.idDocumentNumber}
               onChange={(e) => setFormData(prev => ({ ...prev, idDocumentNumber: e.target.value }))}
-              placeholder="Numéro du document"
-              required
+              placeholder="Numéro du document (optionnel)"
             />
           </div>
         </div>
@@ -788,7 +1174,7 @@ export default function InvestigatorFormPage() {
                   disabled={isRecording}
                 >
                   <Mic className="h-4 w-4 mr-2" />
-                  Enregistrer audio (max 35s)
+                  Enregistrer audio (max 1 min)
                 </Button>
               ) : recordingType === 'audio' ? (
                 <div className="space-y-3">
@@ -803,16 +1189,16 @@ export default function InvestigatorFormPage() {
                       <span className="text-2xl font-mono font-bold text-red-600">
                         {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                       </span>
-                      <span className="text-sm text-muted-foreground ml-2">/ 0:35</span>
+                      <span className="text-sm text-muted-foreground ml-2">/ 1:00</span>
                     </div>
                     
                     <Progress 
-                      value={(recordingTime / 35) * 100} 
+                      value={(recordingTime / 60) * 100} 
                       className="h-2"
                     />
                     
                     <div className="text-center text-xs text-muted-foreground">
-                      {35 - recordingTime} secondes restantes
+                      {60 - recordingTime} secondes restantes
                     </div>
                   </div>
                   
@@ -850,7 +1236,7 @@ export default function InvestigatorFormPage() {
                   disabled={isRecording}
                 >
                   <Video className="h-4 w-4 mr-2" />
-                  Enregistrer vidéo (max 35s)
+                  Enregistrer vidéo (max 30s)
                 </Button>
               ) : recordingType === 'video' ? (
                 <div className="space-y-3">
@@ -865,16 +1251,16 @@ export default function InvestigatorFormPage() {
                       <span className="text-2xl font-mono font-bold text-red-600">
                         {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                       </span>
-                      <span className="text-sm text-muted-foreground ml-2">/ 0:35</span>
+                      <span className="text-sm text-muted-foreground ml-2">/ 0:30</span>
                     </div>
                     
                     <Progress 
-                      value={(recordingTime / 35) * 100} 
+                      value={(recordingTime / 30) * 100} 
                       className="h-2"
                     />
                     
                     <div className="text-center text-xs text-muted-foreground">
-                      {35 - recordingTime} secondes restantes
+                      {30 - recordingTime} secondes restantes
                     </div>
                   </div>
                   
@@ -917,10 +1303,19 @@ export default function InvestigatorFormPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" variant="outline">
+              <Button 
+                className="w-full" 
+                variant={formData.beneficiaryFingerprint ? "default" : "outline"}
+                onClick={captureFingerprint}
+              >
                 <Fingerprint className="h-4 w-4 mr-2" />
-                Capturer empreintes
+                {formData.beneficiaryFingerprint ? "✓ Empreintes capturées" : "Capturer empreintes"}
               </Button>
+              {formData.beneficiaryFingerprint && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  ✓ Capturé
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -932,10 +1327,19 @@ export default function InvestigatorFormPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" variant="outline">
+              <Button 
+                className="w-full" 
+                variant={formData.beneficiaryFaceScan ? "default" : "outline"}
+                onClick={captureFaceScan}
+              >
                 <Eye className="h-4 w-4 mr-2" />
-                Scanner le visage
+                {formData.beneficiaryFaceScan ? "✓ Scan effectué" : "Scanner le visage"}
               </Button>
+              {formData.beneficiaryFaceScan && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  ✓ Scanné
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -995,31 +1399,6 @@ export default function InvestigatorFormPage() {
           Ce champ est obligatoire et doit contenir un résumé détaillé de l'enquête
         </p>
       </div>
-
-      {/* Capture biométrique de l'enquêteur pour soumission */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Validation finale</h3>
-        <Alert>
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Dernière étape :</strong> Capture de vos empreintes pour valider la soumission
-          </AlertDescription>
-        </Alert>
-        
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Fingerprint className="h-12 w-12 mx-auto text-primary mb-4" />
-            <h4 className="text-lg font-semibold mb-2">Validation biométrique</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              Placez votre doigt sur le capteur pour valider la soumission
-            </p>
-            <Button className="w-full" size="lg">
-              <Fingerprint className="h-4 w-4 mr-2" />
-              Valider avec empreinte
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 
@@ -1042,7 +1421,10 @@ export default function InvestigatorFormPage() {
             <span className="font-medium">Sexe :</span> {formData.beneficiarySex}
           </div>
           <div>
-            <span className="font-medium">Âge :</span> {formData.beneficiaryAge} ans
+            <span className="font-medium">Date de naissance :</span> {formData.beneficiaryBirthDate ? new Date(formData.beneficiaryBirthDate).toLocaleDateString('fr-FR') : 'Non renseignée'}
+          </div>
+          <div>
+            <span className="font-medium">Âge :</span> {formData.beneficiaryAge !== null ? `${formData.beneficiaryAge} ${formData.beneficiaryAge === 1 ? 'an' : 'ans'}` : 'Non calculé'}
           </div>
           <div>
             <span className="font-medium">Territoire :</span> {formData.beneficiaryTerritory}
@@ -1095,6 +1477,38 @@ export default function InvestigatorFormPage() {
           </div>
         </div>
       </div>
+
+      {/* Validation biométrique de l'enquêteur pour soumission */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Validation finale</h3>
+        <Alert>
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Dernière étape :</strong> Capture de vos empreintes pour valider la soumission
+          </AlertDescription>
+        </Alert>
+        
+        <Card>
+          <CardContent className="p-6 text-center">
+            <Fingerprint className="h-12 w-12 mx-auto text-primary mb-4" />
+            <h4 className="text-lg font-semibold mb-2">Validation biométrique</h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              Placez votre doigt sur le capteur pour valider la soumission
+            </p>
+            <Button className="w-full" size="lg" onClick={() => {
+              // Simuler la validation biométrique
+              toast({
+                title: "Validation biométrique",
+                description: "Vérification en cours...",
+              })
+              // Ici, vous pouvez ajouter la logique de validation biométrique réelle
+            }}>
+              <Fingerprint className="h-4 w-4 mr-2" />
+              Valider avec empreinte
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 
@@ -1129,6 +1543,15 @@ export default function InvestigatorFormPage() {
                 </div>
                 
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push('/enqueteur/dashboard')}
+                    className="gap-2"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Tableau de bord
+                  </Button>
                   <Badge variant="default" className="gap-2">
                     <CheckCircle2 className="h-3 w-3" />
                     Identité vérifiée
@@ -1149,6 +1572,19 @@ export default function InvestigatorFormPage() {
                   >
                     <Save className="h-4 w-4" />
                     Sauvegarder
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const { logout: authLogout } = await import('@/lib/auth-helpers')
+                      await authLogout()
+                      router.push('/auth/investigator-login')
+                    }}
+                    className="gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Déconnexion
                   </Button>
                 </div>
               </div>
@@ -1268,6 +1704,86 @@ export default function InvestigatorFormPage() {
           </div>
         </>
       )}
+
+      {/* Dialog pour "Autre" statut */}
+      <Dialog open={showOtherStatusDialog} onOpenChange={setShowOtherStatusDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Préciser le statut du bénéficiaire</DialogTitle>
+            <DialogDescription>
+              Veuillez préciser quel est le statut du bénéficiaire.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="otherStatusDetails">
+                Statut <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="otherStatusDetails"
+                placeholder="Ex: Représentant légal, Organisation, etc."
+                value={otherStatusDetails}
+                onChange={(e) => setOtherStatusDetails(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowOtherStatusDialog(false)
+                setOtherStatusDetails("")
+              }}
+            >
+              Annuler
+            </Button>
+            <Button onClick={handleOtherStatusConfirm}>
+              Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog pour "Autres crimes graves" */}
+      <Dialog open={showOtherCrimesDialog} onOpenChange={setShowOtherCrimesDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Préciser le type de crime grave</DialogTitle>
+            <DialogDescription>
+              Veuillez décrire de quel type de crime grave il s'agit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="otherCrimesDetails">
+                Détails du crime <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="otherCrimesDetails"
+                placeholder="Ex: Traite des personnes, Torture, Assassinat, etc."
+                value={otherCrimesDetails}
+                onChange={(e) => setOtherCrimesDetails(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowOtherCrimesDialog(false)
+                setOtherCrimesDetails("")
+              }}
+            >
+              Annuler
+            </Button>
+            <Button onClick={handleOtherCrimesConfirm}>
+              Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

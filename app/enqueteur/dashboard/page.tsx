@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Table,
   TableBody,
@@ -16,22 +15,17 @@ import {
 import {
   Fingerprint,
   FileText,
-  Clock,
   CheckCircle,
   Activity,
-  AlertTriangle,
   MapPin,
-  Calendar,
-  User,
   Plus,
-  Eye,
-  Download,
-  MoreHorizontal,
-  BarChart3,
-  TrendingUp
+  LogOut
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { apiService } from "@/lib/api"
+import { handleApiError } from "@/lib/api-error-handler"
 
 // Types pour les enquêtes
 interface Investigation {
@@ -59,17 +53,14 @@ interface Investigation {
 
 export default function InvestigatorDashboardPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [investigations, setInvestigations] = useState<Investigation[]>([])
   const [loading, setLoading] = useState(true)
 
   // Statistiques
   const [stats, setStats] = useState({
-    totalInvestigations: 0,
-    pendingInvestigations: 0,
     inProgressInvestigations: 0,
-    completedInvestigations: 0,
-    urgentInvestigations: 0,
-    biometricRegistered: true
+    completedInvestigations: 0
   })
 
   // Charger les données
@@ -80,129 +71,58 @@ export default function InvestigatorDashboardPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      // Simulation des données - remplacer par un appel API réel
-      const mockInvestigations: Investigation[] = [
-        {
-          id: "1",
-          trackingCode: "SYW-2024-001",
-          status: "COMPLETED",
-          priority: "HIGH",
-          beneficiaryName: "Victime Anonyme 1",
-          beneficiarySex: "FEMALE",
-          beneficiaryAge: 25,
-          incidentType: "Violence sexuelle",
-          incidentDate: "2024-01-15",
-          incidentAddress: "Kinshasa, Gombe",
-          geolocationProvince: "Kinshasa",
-          geolocationTerritory: "Gombe",
-          investigatorComment: "Enquête terminée avec succès",
-          createdAt: "2024-01-15T10:00:00Z",
-          updatedAt: "2024-01-18T16:30:00Z",
-          evidence: [
-            { type: "PHOTO", fileName: "photo-victime.jpg", fileSize: 1024000 },
-            { type: "AUDIO", fileName: "temoignage.mp3", fileSize: 2048000 }
-          ]
-        },
-        {
-          id: "2",
-          trackingCode: "SYW-2024-002",
-          status: "IN_PROGRESS",
-          priority: "URGENT",
-          beneficiaryName: "Victime Identifiée 1",
-          beneficiarySex: "FEMALE",
-          beneficiaryAge: 30,
-          incidentType: "Violence domestique",
-          incidentDate: "2024-01-16",
-          incidentAddress: "Kinshasa, Limete",
-          geolocationProvince: "Kinshasa",
-          geolocationTerritory: "Limete",
-          investigatorComment: "Enquête en cours, victime coopérative",
-          createdAt: "2024-01-16T09:00:00Z",
-          updatedAt: "2024-01-20T14:30:00Z",
-          evidence: [
-            { type: "PHOTO", fileName: "photo-victime.jpg", fileSize: 1024000 },
-            { type: "VIDEO", fileName: "temoignage.mp4", fileSize: 5120000 }
-          ]
-        },
-        {
-          id: "3",
-          trackingCode: "SYW-2024-003",
-          status: "PENDING",
-          priority: "MEDIUM",
-          beneficiaryName: "Victime Anonyme 2",
-          beneficiarySex: "MALE",
-          beneficiaryAge: 22,
-          incidentType: "Violence physique",
-          incidentDate: "2024-01-17",
-          incidentAddress: "Kinshasa, Kalamu",
-          geolocationProvince: "Kinshasa",
-          geolocationTerritory: "Kalamu",
-          createdAt: "2024-01-17T14:30:00Z",
-          updatedAt: "2024-01-17T14:30:00Z",
-          evidence: []
-        }
-      ]
+      
+      // Charger les plaintes depuis l'API (enquêtes = plaintes créées par l'enquêteur)
+      const complaintsResponse = await apiService.getComplaints({
+        page: 1,
+        limit: 100,
+        type: 'INVESTIGATOR_ASSISTED'
+      })
+      
+      // Transformer les données de l'API au format attendu
+      const transformedInvestigations: Investigation[] = complaintsResponse.data
+        .filter((complaint: any) => complaint.type === 'INVESTIGATOR_ASSISTED')
+        .map((complaint: any) => ({
+          id: complaint.id,
+          trackingCode: complaint.trackingCode,
+          status: complaint.status,
+          priority: complaint.priority,
+          beneficiaryName: complaint.beneficiaryName || undefined,
+          beneficiarySex: complaint.beneficiarySex || undefined,
+          beneficiaryAge: complaint.beneficiaryAge || undefined,
+          incidentType: complaint.beneficiaryNatureOfFacts || 'Non spécifié',
+          incidentDate: complaint.incidentDate || complaint.createdAt,
+          incidentAddress: complaint.geolocationAddress || `${complaint.geolocationProvince || ''}, ${complaint.geolocationTerritory || ''}`,
+          geolocationProvince: complaint.geolocationProvince || '',
+          geolocationTerritory: complaint.geolocationTerritory || '',
+          investigatorComment: complaint.investigatorComment || undefined,
+          createdAt: complaint.createdAt,
+          updatedAt: complaint.updatedAt,
+          evidence: complaint.evidence?.map((e: any) => ({
+            type: e.type,
+            fileName: e.fileName,
+            fileSize: e.fileSize || 0
+          })) || []
+        }))
 
-      setInvestigations(mockInvestigations)
+      setInvestigations(transformedInvestigations)
+
+      // Vérifier le statut biométrique depuis l'utilisateur actuel
+      const currentUser = apiService.getCurrentUser()
+      const biometricRegistered = currentUser?.investigator?.biometricRegistered || false
 
       // Calculer les statistiques
       setStats({
-        totalInvestigations: mockInvestigations.length,
-        pendingInvestigations: mockInvestigations.filter(i => i.status === 'PENDING').length,
-        inProgressInvestigations: mockInvestigations.filter(i => i.status === 'IN_PROGRESS').length,
-        completedInvestigations: mockInvestigations.filter(i => i.status === 'COMPLETED').length,
-        urgentInvestigations: mockInvestigations.filter(i => i.priority === 'URGENT').length,
-        biometricRegistered: true
+        inProgressInvestigations: transformedInvestigations.filter(i => i.status === 'IN_PROGRESS').length,
+        completedInvestigations: transformedInvestigations.filter(i => i.status === 'COMPLETED').length
       })
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les données",
-        variant: "destructive"
-      })
+      handleApiError(error, "Chargement des enquêtes", true)
     } finally {
       setLoading(false)
     }
   }
 
-  const getStatusIcon = (status: Investigation['status']) => {
-    switch (status) {
-      case 'PENDING':
-        return <Clock className="h-4 w-4 text-yellow-500" />
-      case 'IN_PROGRESS':
-        return <Activity className="h-4 w-4 text-blue-500" />
-      case 'COMPLETED':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'CLOSED':
-        return <CheckCircle className="h-4 w-4 text-gray-500" />
-    }
-  }
-
-  const getStatusBadge = (status: Investigation['status']) => {
-    switch (status) {
-      case 'PENDING':
-        return <Badge variant="secondary">En attente</Badge>
-      case 'IN_PROGRESS':
-        return <Badge variant="default" className="bg-blue-500">En cours</Badge>
-      case 'COMPLETED':
-        return <Badge variant="default" className="bg-green-500">Terminé</Badge>
-      case 'CLOSED':
-        return <Badge variant="outline">Fermé</Badge>
-    }
-  }
-
-  const getPriorityBadge = (priority: Investigation['priority']) => {
-    switch (priority) {
-      case 'LOW':
-        return <Badge variant="outline">Faible</Badge>
-      case 'MEDIUM':
-        return <Badge variant="secondary">Moyen</Badge>
-      case 'HIGH':
-        return <Badge variant="default" className="bg-orange-500">Élevé</Badge>
-      case 'URGENT':
-        return <Badge variant="destructive">Urgent</Badge>
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-accent/5">
@@ -220,60 +140,31 @@ export default function InvestigatorDashboardPage() {
               </p>
             </div>
             
-            <Link href="/enqueteur/formulaire">
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nouvelle enquête
+            <div className="flex items-center gap-2">
+              <Link href="/enqueteur/formulaire">
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nouvelle enquête
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => {
+                  localStorage.removeItem('investigator_logged_in')
+                  localStorage.removeItem('investigator_fingerprint_verified')
+                  localStorage.removeItem('investigator_email')
+                  router.push('/auth/investigator-login')
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+                Déconnexion
               </Button>
-            </Link>
+            </div>
           </div>
 
-          {/* Statut biométrique */}
-          <Card className="mb-8">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Fingerprint className="h-6 w-6 text-primary" />
-                  <div>
-                    <p className="font-medium">Authentification biométrique</p>
-                    <p className="text-sm text-muted-foreground">
-                      {stats.biometricRegistered ? "Enregistrée et active" : "Non enregistrée"}
-                    </p>
-                  </div>
-                </div>
-                <Badge variant={stats.biometricRegistered ? "default" : "destructive"}>
-                  {stats.biometricRegistered ? "Actif" : "Inactif"}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total enquêtes</p>
-                    <p className="text-2xl font-bold text-primary">{stats.totalInvestigations}</p>
-                  </div>
-                  <FileText className="h-8 w-8 text-primary/60" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">En attente</p>
-                    <p className="text-2xl font-bold text-yellow-500">{stats.pendingInvestigations}</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-yellow-500/60" />
-                </div>
-              </CardContent>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -290,61 +181,10 @@ export default function InvestigatorDashboardPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Terminées</p>
+                    <p className="text-sm font-medium text-muted-foreground">Total enquêtes terminées</p>
                     <p className="text-2xl font-bold text-green-500">{stats.completedInvestigations}</p>
                   </div>
                   <CheckCircle className="h-8 w-8 text-green-500/60" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Urgentes</p>
-                    <p className="text-2xl font-bold text-red-500">{stats.urgentInvestigations}</p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-red-500/60" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Graphiques de performance */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Performance mensuelle
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
-                  <div className="text-center">
-                    <BarChart3 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Graphique de performance</p>
-                    <p className="text-sm text-muted-foreground">Enquêtes terminées par mois</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Tendances des types d'incidents
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
-                  <div className="text-center">
-                    <TrendingUp className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Graphique des tendances</p>
-                    <p className="text-sm text-muted-foreground">Types d'incidents les plus fréquents</p>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -368,15 +208,10 @@ export default function InvestigatorDashboardPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Code</TableHead>
-                        <TableHead>Bénéficiaire</TableHead>
+                        <TableHead>Numéro du dossier</TableHead>
                         <TableHead>Type d'incident</TableHead>
-                        <TableHead>Priorité</TableHead>
-                        <TableHead>Statut</TableHead>
                         <TableHead>Localisation</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Preuves</TableHead>
-                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -387,29 +222,7 @@ export default function InvestigatorDashboardPage() {
                           </TableCell>
                           
                           <TableCell>
-                            <div>
-                              <div className="font-medium">
-                                {investigation.beneficiaryName || "Anonyme"}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {investigation.beneficiarySex === 'FEMALE' ? 'F' : 'M'}, {investigation.beneficiaryAge} ans
-                              </div>
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
                             <div className="text-sm">{investigation.incidentType}</div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            {getPriorityBadge(investigation.priority)}
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(investigation.status)}
-                              {getStatusBadge(investigation.status)}
-                            </div>
                           </TableCell>
                           
                           <TableCell>
@@ -422,32 +235,6 @@ export default function InvestigatorDashboardPage() {
                           <TableCell>
                             <div className="text-sm">
                               {new Date(investigation.incidentDate).toLocaleDateString('fr-FR')}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(investigation.createdAt).toLocaleDateString('fr-FR')}
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="text-sm">
-                              {investigation.evidence.length} fichier(s)
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {investigation.evidence.map(e => e.type).join(', ')}
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <Download className="h-3 w-3" />
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <MoreHorizontal className="h-3 w-3" />
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>

@@ -13,15 +13,13 @@ const HowItWorks = dynamic(() => import("@/components/how-it-works").then(mod =>
 
 const AboutCards = dynamic(() => import("@/components/about-cards").then(mod => ({ default: mod.AboutCards })), {
   loading: () => <div className="h-64 animate-pulse bg-muted" />,
+  ssr: true,
 })
 
 const ViolenceTypes = dynamic(() => import("@/components/violence-types").then(mod => ({ default: mod.ViolenceTypes })), {
   loading: () => <div className="h-64 animate-pulse bg-muted" />,
 })
 
-const TestimonialsStats = dynamic(() => import("@/components/testimonials-stats").then(mod => ({ default: mod.TestimonialsStats })), {
-  loading: () => <div className="h-64 animate-pulse bg-muted" />,
-})
 
 const AwarenessBanner = dynamic(() => import("@/components/awareness-banner").then(mod => ({ default: mod.AwarenessBanner })), {
   loading: () => <div className="h-32 animate-pulse bg-muted" />,
@@ -44,9 +42,6 @@ export default function HomePage() {
         </Suspense>
         <Suspense fallback={<div className="h-64 animate-pulse bg-muted" />}>
           <ViolenceTypes />
-        </Suspense>
-        <Suspense fallback={<div className="h-64 animate-pulse bg-muted" />}>
-          <TestimonialsStats />
         </Suspense>
         <Suspense fallback={<div className="h-32 animate-pulse bg-muted" />}>
           <AwarenessBanner />

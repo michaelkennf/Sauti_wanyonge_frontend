@@ -1,9 +1,12 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MapPin, Phone, Clock, Navigation, Mail } from "lucide-react"
+import { apiService } from "@/lib/api"
+import { logger } from "@/lib/logger"
 
 type Service = {
   id: number
@@ -16,6 +19,8 @@ type Service = {
   description: string
 }
 
+// TODO: Remplacer par des appels API réels une fois l'endpoint disponible
+// Ces données mock sont temporaires et doivent être supprimées une fois l'API intégrée
 const mockServices: Service[] = [
   {
     id: 1,
@@ -82,7 +87,36 @@ type ServiceListProps = {
 }
 
 export function ServiceList({ serviceType, searchQuery }: ServiceListProps) {
-  const filteredServices = mockServices.filter((service) => {
+  const [services, setServices] = useState<Service[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    loadServices()
+  }, [serviceType, searchQuery])
+
+  const loadServices = async () => {
+    setIsLoading(true)
+    try {
+      const params: any = {}
+      if (serviceType && serviceType !== "all") {
+        params.type = serviceType
+      }
+      if (searchQuery) {
+        params.search = searchQuery
+      }
+
+      const data = await apiService.getServices(params)
+      setServices(data)
+    } catch (error) {
+      logger.error('Erreur lors du chargement des services', error, 'ServiceList')
+      // Fallback vers les données mock en cas d'erreur
+      setServices(mockServices)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filteredServices = services.filter((service) => {
     const matchesType = serviceType === "all" || service.type === serviceType
     const matchesSearch =
       searchQuery === "" ||

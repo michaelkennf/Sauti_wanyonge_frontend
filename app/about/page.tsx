@@ -21,11 +21,10 @@ export default function AboutPage() {
               transition={{ duration: 0.6 }}
               className="max-w-4xl mx-auto text-center"
             >
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 text-balance">À propos de Sauti ya Wa Nyonge</h1>
+              <h1 className="text-5xl md:text-6xl font-bold mb-6 text-balance">À propos de Sauti ya wa nyonge</h1>
               <p className="text-xl md:text-2xl leading-relaxed text-primary-foreground/90">
-                Sauti ya Wa Nyonge est une plateforme nationale dédiée au signalement, à l'orientation et au suivi des
-                victimes de violences sexuelles et des violences basées sur le genre en République démocratique du
-                Congo. Initiée pour garantir confidentialité, sécurité et accès rapide aux services d'assistance.
+                Sauti ya wa nyonge est une plateforme de signalement et de documentation des cas de violences sexuelles liées aux conflits et autres crimes graves en République démocratique du Congo. 
+                Anonyme, sécurisée et disponible 24h/24, elle garantit confidentialité, sécurité et accès rapide aux services d'assistance.
               </p>
             </motion.div>
           </div>
@@ -48,7 +47,7 @@ export default function AboutPage() {
                 </div>
                 <p className="text-lg text-muted-foreground leading-relaxed">
                   Offrir un guichet numérique confidentiel, anonyme et sécurisé pour que chaque victime ou témoin puisse
-                  signaler, obtenir une première assistance et être orienté(e) vers des services adaptés.
+                  signaler un cas, obtenir une première assistance et être orienté(e) vers des services adaptés pour les violences sexuelles liées aux conflits et autres crimes graves.
                 </p>
               </motion.div>
 
@@ -67,7 +66,7 @@ export default function AboutPage() {
                 <ul className="space-y-3 text-lg text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-1">•</span>
-                    <span>Dépôt de plainte anonyme ou identifiée</span>
+                    <span>Signalement de cas anonyme ou identifié (Viol, Harcèlement sexuel, Zoophilie, Mariage forcé, Proxénétisme, Attentat à la pudeur, Autres crimes graves)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-1">•</span>
@@ -79,11 +78,11 @@ export default function AboutPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-1">•</span>
-                    <span>Suivi de dossier avec code confidentiel</span>
+                    <span>Suivi de cas avec code confidentiel</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-1">•</span>
-                    <span>Tableaux de bord et analyses pour les autorités et ONG</span>
+                    <span>Documentation et analyse des cas pour les autorités et ONG</span>
                   </li>
                 </ul>
               </motion.div>
@@ -120,8 +119,7 @@ export default function AboutPage() {
                   <h2 className="text-3xl md:text-4xl font-bold">Zone d'intervention</h2>
                 </div>
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  Projet déployable sur toute la RDC ; priorités : zones affectées par les conflits (Beni, Butembo,
-                  Goma, Bukavu, etc.).
+                  Plateforme déployable sur toute la RDC avec priorité aux zones affectées par les conflits où les violences sexuelles liées aux conflits sont les plus fréquentes (Beni, Butembo, Goma, Bukavu, etc.).
                 </p>
               </motion.div>
 
@@ -157,7 +155,7 @@ export default function AboutPage() {
                 <Button asChild size="lg" className="gap-2">
                   <Link href="/plainte">
                     <FileText className="h-5 w-5" />
-                    Déposez une plainte
+                    Signaler un cas
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="gap-2 bg-transparent">

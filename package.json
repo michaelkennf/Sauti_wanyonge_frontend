@@ -5,11 +5,12 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "dev:clean": "npm run clean:win && next dev",
     "lint": "next lint",
     "start": "next start -p 5023",
     "start:pm2": "pm2 start ecosystem.config.js",
     "clean": "rm -rf .next node_modules/.cache",
-    "clean:win": "powershell -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next }; if (Test-Path node_modules\\.cache) { Remove-Item -Recurse -Force node_modules\\.cache }\""
+    "clean:win": "powershell -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next }; if (Test-Path node_modules\\.cache) { Remove-Item -Recurse -Force node_modules\\.cache }; Write-Host 'Nettoyage terminé'\""
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",

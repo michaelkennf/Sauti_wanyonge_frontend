@@ -6,13 +6,14 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { authService, type User } from "@/lib/auth"
+import type { User } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 import { ToastContainer } from "@/components/ui/toast"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { UserIcon, Mail, Shield, MapPin, Calendar, LogOut, Edit } from "lucide-react"
+import { getCurrentUser, logout as authLogout } from "@/lib/auth-helpers"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -21,12 +22,12 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser()
+    const currentUser = getCurrentUser()
     setUser(currentUser)
   }, [])
 
-  const handleLogout = () => {
-    authService.logout()
+  const handleLogout = async () => {
+    await authLogout()
     addToast("Déconnexion réussie", "success")
     setTimeout(() => {
       router.push("/")

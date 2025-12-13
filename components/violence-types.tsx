@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { apiService } from "@/lib/api"
 
 const violenceTypes = [
   {
@@ -17,16 +18,10 @@ const violenceTypes = [
       "Comportements non désirés à connotation sexuelle créant un environnement hostile ou intimidant au travail ou ailleurs.",
   },
   {
-    type: "Enlèvement",
+    type: "Zoophilie",
     image: "/african-woman-looking-concerned-but-hopeful.jpg",
     description:
-      "Privation de liberté par la force ou la ruse. Souvent lié à d'autres formes de violence et nécessite une intervention urgente.",
-  },
-  {
-    type: "Menaces et intimidation",
-    image: "/african-woman-showing-courage-and-determination.jpg",
-    description:
-      "Actes visant à inspirer la peur ou à contraindre une personne par la menace de violence physique ou psychologique.",
+      "Acte sexuel commis avec un animal. Crime grave nécessitant une intervention immédiate et un suivi spécialisé.",
   },
   {
     type: "Mariage forcé",
@@ -35,28 +30,57 @@ const violenceTypes = [
       "Union imposée sans le consentement libre et éclairé de l'une ou des deux parties. Violation des droits humains fondamentaux.",
   },
   {
-    type: "Détention illégale",
+    type: "Proxénétisme",
     image: "/african-woman-advocate-for-justice.jpg",
     description:
-      "Privation de liberté sans base légale. Peut s'accompagner d'autres formes de violence et nécessite une assistance juridique.",
+      "Exploitation de la prostitution d'autrui. Crime grave nécessitant une protection immédiate et une assistance juridique.",
   },
   {
-    type: "Exploitation sexuelle",
+    type: "Attentat à la pudeur",
     image: "/african-woman-survivor-with-hope-in-eyes.jpg",
     description:
-      "Abus de position de vulnérabilité à des fins sexuelles, incluant la prostitution forcée et la traite des personnes.",
+      "Actes d'exhibitionnisme ou d'attentat à la pudeur. Nécessite une intervention et un suivi appropriés.",
   },
   {
-    type: "Violence domestique",
+    type: "Autres crimes graves",
     image: "/african-woman-showing-inner-strength.jpg",
     description:
-      "Violence physique, psychologique ou économique au sein du foyer. Cycle de violence nécessitant un soutien spécialisé.",
+      "Tous les autres crimes graves liés aux violences sexuelles et basées sur le genre. Chaque cas est pris en charge avec le sérieux qu'il mérite.",
   },
 ]
 
 export function ViolenceTypes() {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(0)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set())
+  const [stats, setStats] = useState<Record<string, number>>({})
+  const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    loadStats()
+  }, [])
+
+  const loadStats = async () => {
+    try {
+      const statsData = await apiService.getViolenceStats()
+      const statsMap: Record<string, number> = {}
+      statsData.forEach(stat => {
+        statsMap[stat.violenceType] = stat.count
+      })
+      setStats(statsMap)
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques:', error)
+      // En cas d'erreur, initialiser avec des valeurs par défaut
+      const defaultStats: Record<string, number> = {}
+      violenceTypes.forEach(item => {
+        defaultStats[item.type] = 0
+      })
+      setStats(defaultStats)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const toggleFlip = (index: number) => {
     setFlippedCards((prev) => {
@@ -74,7 +98,7 @@ export function ViolenceTypes() {
     <section className="py-20 bg-background relative overflow-hidden">
       {/* Background Image */}
       <AnimatePresence mode="wait">
-        {selectedIndex !== null && (
+        {mounted && selectedIndex !== null && selectedIndex >= 0 && selectedIndex < violenceTypes.length && (
           <motion.div
             key={selectedIndex}
             initial={{ opacity: 0, scale: 1.05 }}
@@ -131,32 +155,58 @@ export function ViolenceTypes() {
                   className="relative w-full h-full cursor-pointer"
                   style={{ transformStyle: "preserve-3d" }}
                 >
-                  {/* Front of card */}
+                  {/* Front of card - Description en haut, nom en bas */}
                   <div
-                    className={`absolute inset-0 p-6 rounded-lg border transition-all duration-300 flex items-center justify-center ${
+                    className={`absolute inset-0 p-6 rounded-lg border transition-all duration-300 flex flex-col justify-between ${
                       selectedIndex === index
                         ? "bg-primary text-primary-foreground border-primary shadow-lg"
                         : "bg-card border-border hover:border-primary hover:shadow-lg"
                     }`}
                     style={{ backfaceVisibility: "hidden" }}
                   >
-                    <p
-                      className={`text-center font-medium transition-colors ${
-                        selectedIndex === index ? "text-primary-foreground" : "text-foreground group-hover:text-primary"
-                      }`}
-                    >
-                      {item.type}
-                    </p>
+                    <div className="flex-1 flex items-start">
+                      <p
+                        className={`text-sm text-center leading-relaxed ${
+                          selectedIndex === index ? "text-primary-foreground/90" : "text-muted-foreground"
+                        }`}
+                      >
+                        {item.description}
+                      </p>
+                    </div>
+                    <div className="mt-auto">
+                      <p
+                        className={`text-center font-semibold text-lg transition-colors ${
+                          selectedIndex === index ? "text-primary-foreground" : "text-foreground group-hover:text-primary"
+                        }`}
+                      >
+                        {item.type}
+                      </p>
+                    </div>
                   </div>
 
+                  {/* Back of card - Statistiques */}
                   <div
-                    className="absolute inset-0 p-6 rounded-lg border bg-primary/95 text-primary-foreground border-primary shadow-lg flex items-center justify-center"
+                    className="absolute inset-0 p-6 rounded-lg border bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-primary shadow-lg flex flex-col items-center justify-center"
                     style={{
                       backfaceVisibility: "hidden",
                       transform: "rotateY(180deg)",
                     }}
                   >
-                    <p className="text-sm text-center leading-relaxed">{item.description}</p>
+                    {!mounted || loading ? (
+                      <div className="text-center">
+                        <div className="text-5xl md:text-6xl font-bold mb-2">0</div>
+                        <p className="text-sm text-center text-primary-foreground/90 mb-1">Cas signalés</p>
+                        <p className="text-xs text-center text-primary-foreground/70 mt-2">{item.type}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-5xl md:text-6xl font-bold mb-2">
+                          {stats[item.type]?.toLocaleString() || 0}
+                        </div>
+                        <p className="text-sm text-center text-primary-foreground/90 mb-1">Cas signalés</p>
+                        <p className="text-xs text-center text-primary-foreground/70 mt-2">{item.type}</p>
+                      </>
+                    )}
                   </div>
                 </motion.div>
               </motion.div>

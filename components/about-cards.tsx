@@ -5,7 +5,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Shield, Bot, Navigation, Eye, Heart } from "lucide-react"
 import { motion } from "framer-motion"
 import { useTranslation } from "@/hooks/use-translation"
+import Image from "next/image"
 
+// Composant AboutCards - Version avec logos RDC, FONAREV et Nations Unies
 export function AboutCards() {
   const { t } = useTranslation()
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
@@ -52,15 +54,31 @@ export function AboutCards() {
       borderColor: "border-red-500/50",
       logos: [
         {
-          src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/rdc-T61e4MfAqibYSfXUqeNUMi2RQkbaDr.png",
+          src: "/logo%20rdc.png",
           alt: "Gouvernement RDC",
         },
         {
-          src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/fonarev-tUSviZpD7w4th3RistQYLyW6cxpQJE.jpeg",
+          src: "/logo%20fonarev.jpg",
           alt: "FONAREV",
         },
         {
-          src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-05-16%20%C3%A0%2020.56.29_cfa01b3c-2M8Gpc0uTQof3oQ7ljaEwMVjdAEi2K.jpg",
+          src: "/BCNUDH.jpeg",
+          alt: "BCNUDH",
+        },
+        {
+          src: "/UNICEF.png",
+          alt: "UNICEF",
+        },
+        {
+          src: "/unfa.png",
+          alt: "UNFPA",
+        },
+        {
+          src: "/onu_femme.png",
+          alt: "ONU Femmes",
+        },
+        {
+          src: "/pnud.png",
           alt: "PNUD RDC",
         },
       ],
@@ -127,14 +145,18 @@ export function AboutCards() {
                   </p>
 
                   {feature.logos && (
-                    <div className="flex justify-center items-center gap-4 py-4">
+                    <div className="flex flex-wrap justify-center items-center gap-3 py-4">
                       {feature.logos.map((logo, logoIndex) => (
-                        <img
-                          key={logoIndex}
-                          src={logo.src}
-                          alt={logo.alt}
-                          className="h-8 w-auto opacity-70 hover:opacity-100 transition-opacity"
-                        />
+                        <div key={logoIndex} className="h-10 flex items-center justify-center">
+                          <Image
+                            src={logo.src}
+                            alt={logo.alt}
+                            width={60}
+                            height={40}
+                            className="h-full w-auto max-w-[60px] object-contain opacity-70 hover:opacity-100 transition-opacity"
+                            unoptimized
+                          />
+                        </div>
                       ))}
                     </div>
                   )}

@@ -12,31 +12,34 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
-import { authService } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "@/hooks/use-translation"
 import type { User as UserType } from "@/lib/auth"
+import { logger } from "@/lib/logger"
+import { getCurrentUser, logout as authLogout } from "@/lib/auth-helpers"
 
 export function Navbar() {
   const router = useRouter()
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [user, setUser] = useState<UserType | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   // S'assurer que le composant est monté côté client avant d'accéder à localStorage
   useEffect(() => {
+    setMounted(true)
     if (typeof window !== 'undefined') {
       try {
-        setUser(authService.getCurrentUser())
+        setUser(getCurrentUser())
       } catch (error) {
-        console.error('Erreur lors de la récupération de l\'utilisateur:', error)
+        logger.error('Erreur lors de la récupération de l\'utilisateur', error, 'Navbar')
         setUser(null)
       }
     }
   }, [])
 
-  const handleLogout = () => {
-    authService.logout()
+  const handleLogout = async () => {
+    await authLogout()
     setUser(null)
     router.push("/")
   }
@@ -46,13 +49,25 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex h-20 items-center justify-between">
           {/* Logo Section */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
+            {/* Logo RDC - Coin gauche */}
+            <div className="relative h-16 w-16 flex items-center justify-center transition-transform hover:scale-110 duration-300">
+              <Image
+                src="/logo%20rdc.png"
+                alt="Gouvernement de la République Démocratique du Congo"
+                width={64}
+                height={64}
+                className="h-full w-full object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+                unoptimized
+              />
+            </div>
+            
             <Link href="/" className="flex items-center gap-2">
               <div className="flex items-center gap-3">
                 <div className="relative h-16 w-16 hover:scale-105 transition-transform duration-200">
-                  <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya Wa Nyonge Logo" fill className="object-contain" />
+                  <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya wa nyonge Logo" fill className="object-contain" />
                 </div>
-                <span className="hidden md:block text-xl font-semibold text-foreground">Sauti ya Wa Nyonge</span>
+                <span className="hidden md:block text-xl font-semibold text-foreground">Sauti ya wa nyonge</span>
               </div>
             </Link>
           </div>
@@ -97,10 +112,22 @@ export function Navbar() {
             </Link>
           </div>
 
+          {/* Logo FONAREV - Coin droit (visible sur desktop et mobile) */}
+          <div className="relative h-16 w-16 flex items-center justify-center transition-transform hover:scale-110 duration-300 mr-2 md:mr-4">
+            <Image
+              src="/logo%20fonarev.jpg"
+              alt="FONAREV - Fonds National pour la Réparation des Victimes"
+              width={64}
+              height={64}
+              className="h-full w-full object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
+              unoptimized
+            />
+          </div>
+
           {/* User Menu & Mobile Menu */}
           <div className="flex items-center gap-3">
             {/* User Menu */}
-            {user ? (
+            {mounted && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2 bg-transparent">
@@ -157,7 +184,7 @@ export function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/auth/login">
+              <Link href="/auth/login-select">
                 <Button size="sm" className="gap-2">
                   <User className="h-4 w-4" />
                   <span className="hidden sm:inline">{t('nav.login')}</span>
@@ -217,7 +244,7 @@ export function Navbar() {
             >
               {t('nav.contact')}
             </Link>
-            {user && (
+            {mounted && user && (
               <>
                 <Link
                   href="/profile"
@@ -248,8 +275,8 @@ export function Navbar() {
                 </Button>
               </>
             )}
-            {!user && (
-              <Link href="/auth/login">
+            {mounted && !user && (
+              <Link href="/auth/login-select">
                 <Button
                   size="sm"
                   className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-md transition-colors"

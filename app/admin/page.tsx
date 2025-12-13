@@ -6,6 +6,7 @@ import { DashboardOverview } from "@/components/admin/dashboard-overview"
 import { ComplaintsList } from "@/components/admin/complaints-list"
 import { AIAnalytics } from "@/components/admin/ai-analytics"
 import { UserManagement } from "@/components/admin/user-management"
+import { ViolenceStatsManagement } from "@/components/admin/violence-stats-management"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 
@@ -38,6 +39,7 @@ export default function AdminPage() {
             {activeTab === "users" && <UserManagement />}
             {activeTab === "complaints" && <ComplaintsList />}
             {activeTab === "analytics" && <AIAnalytics />}
+            {activeTab === "violence-stats" && <ViolenceStatsManagement />}
           </div>
         </main>
       </div>

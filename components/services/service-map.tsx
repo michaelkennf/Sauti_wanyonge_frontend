@@ -1,12 +1,13 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { CardHeader } from "@/components/ui/card"
-
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MapPin, Phone, Clock, Navigation } from "lucide-react"
-import { useState } from "react"
+import { apiService } from "@/lib/api"
+import { logger } from "@/lib/logger"
 
 type Service = {
   id: number
@@ -19,6 +20,8 @@ type Service = {
   lng: number
 }
 
+// TODO: Remplacer par des appels API réels une fois l'endpoint disponible
+// Ces données mock sont temporaires et doivent être supprimées une fois l'API intégrée
 const mockServices: Service[] = [
   {
     id: 1,
@@ -69,8 +72,47 @@ type ServiceMapProps = {
 
 export function ServiceMap({ serviceType, searchQuery }: ServiceMapProps) {
   const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [services, setServices] = useState<Service[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const filteredServices = mockServices.filter((service) => {
+  useEffect(() => {
+    loadServices()
+  }, [serviceType, searchQuery])
+
+  const loadServices = async () => {
+    setIsLoading(true)
+    try {
+      const params: any = {}
+      if (serviceType && serviceType !== "all") {
+        params.type = serviceType
+      }
+      if (searchQuery) {
+        params.search = searchQuery
+      }
+
+      const data = await apiService.getServices(params)
+      // Transformer les données API vers le format Service avec lat/lng
+      const transformedServices: Service[] = data.map((service: any) => ({
+        id: service.id,
+        name: service.name,
+        type: service.type,
+        address: service.address,
+        phone: service.phone,
+        hours: service.hours,
+        lat: service.lat,
+        lng: service.lng,
+      }))
+      setServices(transformedServices)
+    } catch (error) {
+      logger.error('Erreur lors du chargement des services', error, 'ServiceMap')
+      // Fallback vers les données mock en cas d'erreur
+      setServices(mockServices)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filteredServices = services.filter((service) => {
     const matchesType = serviceType === "all" || service.type === serviceType
     const matchesSearch =
       searchQuery === "" ||

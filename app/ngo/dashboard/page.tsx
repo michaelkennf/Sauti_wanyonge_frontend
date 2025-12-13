@@ -56,6 +56,8 @@ import {
   CheckSquare
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { apiService } from "@/lib/api"
+import { handleApiError } from "@/lib/api-error-handler"
 
 // Types pour les plaintes
 interface Complaint {
@@ -137,129 +139,79 @@ export default function NGODashboardPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      // Simulation des données - remplacer par un appel API réel
-      const mockComplaints: Complaint[] = [
-        {
-          id: "1",
-          trackingCode: "SYW-2024-001",
-          type: "VICTIM_DIRECT",
-          status: "PENDING",
-          priority: "HIGH",
-          beneficiaryName: "Victime Anonyme 1",
-          beneficiarySex: "FEMALE",
-          beneficiaryAge: 25,
-          incidentType: "Violence sexuelle",
-          incidentDate: "2024-01-15",
-          incidentDescription: "Description de l'incident...",
-          incidentAddress: "Kinshasa, Gombe",
-          geolocationProvince: "Kinshasa",
-          geolocationTerritory: "Gombe",
-          geolocationVillage: "Commune de Gombe",
-          createdAt: "2024-01-15T10:00:00Z",
-          updatedAt: "2024-01-15T10:00:00Z",
-          evidence: [
-            { type: "PHOTO", fileName: "photo-victime.jpg", fileSize: 1024000 }
-          ],
-          services: [
-            { serviceType: "MEDICAL", status: "REQUESTED" },
-            { serviceType: "PSYCHOLOGICAL", status: "REQUESTED" }
-          ]
-        },
-        {
-          id: "2",
-          trackingCode: "SYW-2024-002",
-          type: "INVESTIGATOR_ASSISTED",
-          status: "IN_PROGRESS",
-          priority: "URGENT",
-          beneficiaryName: "Victime Identifiée 1",
-          beneficiarySex: "FEMALE",
-          beneficiaryAge: 30,
-          incidentType: "Violence domestique",
-          incidentDate: "2024-01-16",
-          incidentDescription: "Description de l'incident...",
-          incidentAddress: "Kinshasa, Limete",
-          geolocationProvince: "Kinshasa",
-          geolocationTerritory: "Limete",
-          geolocationVillage: "Commune de Limete",
-          investigatorComment: "Enquête en cours, victime coopérative",
-          createdAt: "2024-01-16T09:00:00Z",
-          updatedAt: "2024-01-18T14:30:00Z",
-          investigator: {
-            name: "Jean Mukamba",
-            badgeNumber: "INV-001"
-          },
-          evidence: [
-            { type: "PHOTO", fileName: "photo-victime.jpg", fileSize: 1024000 },
-            { type: "AUDIO", fileName: "temoignage.mp3", fileSize: 2048000 },
-            { type: "VIDEO", fileName: "temoignage.mp4", fileSize: 5120000 }
-          ],
-          services: [
-            { serviceType: "MEDICAL", status: "IN_PROGRESS" },
-            { serviceType: "LEGAL", status: "REQUESTED" },
-            { serviceType: "PROTECTION", status: "PROVIDED" }
-          ]
-        }
-      ]
+      
+      // Charger les plaintes depuis l'API
+      const complaintsResponse = await apiService.getComplaints({
+        page: 1,
+        limit: 100
+      })
+      
+      // Transformer les données de l'API au format attendu
+      const transformedComplaints: Complaint[] = complaintsResponse.data.map((complaint: any) => ({
+        id: complaint.id,
+        trackingCode: complaint.trackingCode,
+        type: complaint.type,
+        status: complaint.status,
+        priority: complaint.priority,
+        beneficiaryName: complaint.beneficiaryName || undefined,
+        beneficiarySex: complaint.beneficiarySex || undefined,
+        beneficiaryAge: complaint.beneficiaryAge || undefined,
+        incidentType: complaint.beneficiaryNatureOfFacts || 'Non spécifié',
+        incidentDate: complaint.incidentDate || complaint.createdAt,
+        incidentDescription: complaint.beneficiaryNatureOfFacts || '',
+        incidentAddress: complaint.geolocationAddress || `${complaint.geolocationProvince || ''}, ${complaint.geolocationTerritory || ''}`,
+        geolocationProvince: complaint.geolocationProvince || '',
+        geolocationTerritory: complaint.geolocationTerritory || '',
+        geolocationVillage: complaint.geolocationVillage || undefined,
+        investigatorComment: complaint.investigatorComment || undefined,
+        createdAt: complaint.createdAt,
+        updatedAt: complaint.updatedAt,
+        investigator: complaint.investigator ? {
+          name: complaint.investigator.name || '',
+          badgeNumber: complaint.investigator.badgeNumber || ''
+        } : undefined,
+        evidence: complaint.evidence?.map((e: any) => ({
+          type: e.type,
+          fileName: e.fileName,
+          fileSize: e.fileSize || 0
+        })) || [],
+        services: complaint.services?.map((s: any) => ({
+          serviceType: s.serviceType,
+          status: s.status,
+          notes: s.notes
+        })) || []
+      }))
 
-      const mockServices: Service[] = [
-        {
-          id: "1",
-          complaintId: "1",
-          serviceType: "MEDICAL",
-          status: "REQUESTED",
-          createdAt: "2024-01-15T10:00:00Z"
-        },
-        {
-          id: "2",
-          complaintId: "1",
-          serviceType: "PSYCHOLOGICAL",
-          status: "REQUESTED",
-          createdAt: "2024-01-15T10:00:00Z"
-        },
-        {
-          id: "3",
-          complaintId: "2",
-          serviceType: "MEDICAL",
-          status: "IN_PROGRESS",
-          notes: "Consultation médicale programmée",
-          createdAt: "2024-01-16T09:00:00Z"
-        },
-        {
-          id: "4",
-          complaintId: "2",
-          serviceType: "LEGAL",
-          status: "REQUESTED",
-          createdAt: "2024-01-16T09:00:00Z"
-        },
-        {
-          id: "5",
-          complaintId: "2",
-          serviceType: "PROTECTION",
-          status: "PROVIDED",
-          notes: "Hébergement temporaire fourni",
-          createdAt: "2024-01-17T08:00:00Z"
-        }
-      ]
+      setComplaints(transformedComplaints)
 
-      setComplaints(mockComplaints)
-      setServices(mockServices)
+      // Extraire les services de toutes les plaintes
+      const allServices: Service[] = []
+      transformedComplaints.forEach(complaint => {
+        complaint.services.forEach((service, index) => {
+          allServices.push({
+            id: `${complaint.id}-${index}`,
+            complaintId: complaint.id,
+            serviceType: service.serviceType as Service['serviceType'],
+            status: service.status as Service['status'],
+            notes: service.notes,
+            createdAt: complaint.createdAt
+          })
+        })
+      })
+      setServices(allServices)
 
       // Calculer les statistiques
       setStats({
-        totalComplaints: mockComplaints.length,
-        pendingComplaints: mockComplaints.filter(c => c.status === 'PENDING').length,
-        inProgressComplaints: mockComplaints.filter(c => c.status === 'IN_PROGRESS').length,
-        completedComplaints: mockComplaints.filter(c => c.status === 'COMPLETED').length,
-        urgentComplaints: mockComplaints.filter(c => c.priority === 'URGENT').length,
-        totalServices: mockServices.length,
-        activeServices: mockServices.filter(s => s.status === 'IN_PROGRESS').length
+        totalComplaints: transformedComplaints.length,
+        pendingComplaints: transformedComplaints.filter(c => c.status === 'PENDING').length,
+        inProgressComplaints: transformedComplaints.filter(c => c.status === 'IN_PROGRESS').length,
+        completedComplaints: transformedComplaints.filter(c => c.status === 'COMPLETED').length,
+        urgentComplaints: transformedComplaints.filter(c => c.priority === 'URGENT').length,
+        totalServices: allServices.length,
+        activeServices: allServices.filter(s => s.status === 'IN_PROGRESS').length
       })
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les données",
-        variant: "destructive"
-      })
+      handleApiError(error, "Chargement des données", true)
     } finally {
       setLoading(false)
     }
@@ -281,28 +233,15 @@ export default function NGODashboardPage() {
   // Mettre à jour le statut d'une plainte
   const handleStatusUpdate = async (complaintId: string, newStatus: Complaint['status']) => {
     try {
-      const response = await fetch(`/api/ngo/complaints/${complaintId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      })
-
-      if (response.ok) {
-        toast({
-          title: "Succès",
-          description: "Statut de la plainte mis à jour",
-          variant: "default"
-        })
-        loadData()
-      } else {
-        throw new Error('Erreur de mise à jour')
-      }
-    } catch (error) {
+      await apiService.updateComplaintStatus(complaintId, newStatus)
       toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le statut",
-        variant: "destructive"
+        title: "Succès",
+        description: "Statut de la plainte mis à jour",
+        variant: "default"
       })
+      loadData()
+    } catch (error) {
+      handleApiError(error, "Mise à jour du statut", true)
     }
   }
 
@@ -334,11 +273,7 @@ export default function NGODashboardPage() {
         throw new Error('Erreur d\'ajout')
       }
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ajouter le service",
-        variant: "destructive"
-      })
+      handleApiError(error, "Ajout du service", true)
     }
   }
 
@@ -362,11 +297,7 @@ export default function NGODashboardPage() {
         throw new Error('Erreur de mise à jour')
       }
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le statut du service",
-        variant: "destructive"
-      })
+      handleApiError(error, "Mise à jour du service", true)
     }
   }
 

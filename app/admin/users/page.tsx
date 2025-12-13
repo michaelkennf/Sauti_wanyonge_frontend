@@ -51,6 +51,8 @@ import {
   AlertTriangle
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { apiService } from "@/lib/api"
+import { handleApiError } from "@/lib/api-error-handler"
 
 // Types pour les utilisateurs
 interface User {
@@ -124,72 +126,61 @@ export default function AdminUsersPage() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      // Simulation des données - remplacer par un appel API réel
-      const mockUsers: User[] = [
-        {
-          id: "1",
-          email: "admin@sauti-ya-wayonge.rdc",
-          role: "ADMIN",
-          status: "ACTIVE",
-          aiAccessLevel: "GLOBAL",
-          createdAt: "2024-01-15T10:00:00Z",
-          lastLogin: "2024-01-20T14:30:00Z"
-        },
-        {
-          id: "2",
-          email: "enqueteur@sauti-ya-wayonge.rdc",
-          role: "INVESTIGATOR",
-          status: "ACTIVE",
-          aiAccessLevel: "REGIONAL",
-          createdAt: "2024-01-16T09:00:00Z",
-          lastLogin: "2024-01-20T16:45:00Z",
-          investigator: {
-            name: "Jean Mukamba",
-            badgeNumber: "INV-001",
-            department: "Police Nationale",
-            province: "Kinshasa",
-            zone: "Gombe",
-            biometricRegistered: true
-          }
-        },
-        {
-          id: "3",
-          email: "ong@sauti-ya-wayonge.rdc",
-          role: "NGO",
-          status: "ACTIVE",
-          aiAccessLevel: "REGIONAL",
-          createdAt: "2024-01-17T11:00:00Z",
-          lastLogin: "2024-01-19T10:20:00Z",
-          ngo: {
-            name: "Fondation pour les Droits des Femmes",
-            registrationNumber: "NGO-2024-001",
-            province: "Kinshasa",
-            zone: "Gombe",
-            contactPerson: "Marie Kabila"
-          }
-        },
-        {
-          id: "4",
-          email: "assurance@sauti-ya-wayonge.rdc",
-          role: "ASSURANCE",
-          status: "ACTIVE",
-          aiAccessLevel: "GLOBAL",
-          createdAt: "2024-01-18T08:00:00Z",
-          lastLogin: "2024-01-20T12:15:00Z",
-          assurance: {
-            name: "Assurance Victimes RDC",
-            contactPerson: "Pierre Mbuyi"
-          }
-        }
-      ]
       
-      setUsers(mockUsers)
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les utilisateurs",
-        variant: "destructive"
+      // Charger les utilisateurs depuis l'API
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+
+      const response = await fetch(`${API_URL}/admin/users`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          // Transformer les données de l'API au format attendu
+          const transformedUsers: User[] = result.data.map((user: any) => ({
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            aiAccessLevel: user.aiAccessLevel,
+            createdAt: user.createdAt,
+            lastLogin: user.lastLogin,
+            investigator: user.investigator ? {
+              name: user.investigator.name,
+              badgeNumber: user.investigator.badgeNumber,
+              department: user.investigator.department,
+              province: user.investigator.province,
+              zone: user.investigator.zone,
+              biometricRegistered: user.investigator.biometricRegistered || false
+            } : undefined,
+            ngo: user.ngo ? {
+              name: user.ngo.name,
+              registrationNumber: user.ngo.registrationNumber,
+              province: user.ngo.province,
+              zone: user.ngo.zone,
+              contactPerson: user.ngo.contactPerson
+            } : undefined,
+            assurance: user.assurance ? {
+              name: user.assurance.name,
+              contactPerson: user.assurance.contactPerson
+            } : undefined
+          }))
+          
+          setUsers(transformedUsers)
+        } else {
+          setUsers([])
+        }
+      } else {
+        throw new Error('Erreur lors du chargement des utilisateurs')
+      }
+    } catch (error) {
+      handleApiError(error, "Chargement des utilisateurs", true)
     } finally {
       setLoading(false)
     }
@@ -242,9 +233,15 @@ export default function AdminUsersPage() {
       }
 
       // Appel API pour créer l'utilisateur
-      const response = await fetch('/api/admin/users', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      
+      const response = await fetch(`${API_URL}/admin/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(formData)
       })
 
@@ -261,20 +258,22 @@ export default function AdminUsersPage() {
         throw new Error('Erreur de création')
       }
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer l'utilisateur",
-        variant: "destructive"
-      })
+      handleApiError(error, "Création de l'utilisateur", true)
     }
   }
 
   // Modifier le statut d'un utilisateur
   const handleStatusChange = async (userId: string, newStatus: User['status']) => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}/status`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      
+      const response = await fetch(`${API_URL}/admin/users/${userId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ status: newStatus })
       })
 
@@ -289,11 +288,7 @@ export default function AdminUsersPage() {
         throw new Error('Erreur de mise à jour')
       }
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le statut",
-        variant: "destructive"
-      })
+      handleApiError(error, "Mise à jour du statut", true)
     }
   }
 
@@ -302,8 +297,15 @@ export default function AdminUsersPage() {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ?")) return
 
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      
+      const response = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       })
 
       if (response.ok) {
@@ -317,11 +319,7 @@ export default function AdminUsersPage() {
         throw new Error('Erreur de suppression')
       }
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'utilisateur",
-        variant: "destructive"
-      })
+      handleApiError(error, "Suppression de l'utilisateur", true)
     }
   }
 

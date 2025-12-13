@@ -3,7 +3,7 @@ export interface User {
   id: string
   name: string
   email: string
-  role: "admin" | "enqueteur" | "institution" | "visiteur"
+  role: "admin" | "enqueteur" | "institution" | "visiteur" | "investigator" | "ngo" | "assurance"
   province?: string
   isActive: boolean
   createdAt: string
@@ -15,7 +15,9 @@ export interface AuthState {
   isAuthenticated: boolean
 }
 
-// Mock authentication - replace with real API calls
+// TODO: Remplacer complètement par des appels API réels via apiService
+// Ce service mock est temporaire et doit être supprimé une fois l'authentification API complètement intégrée
+// NOTE: Actuellement utilisé par navbar, profile, protected-route - migrer vers apiService.login()
 export const authService = {
   login: async (email: string, password: string): Promise<{ user: User; token: string }> => {
     // Simulate API call

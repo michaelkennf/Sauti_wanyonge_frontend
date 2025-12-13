@@ -16,7 +16,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: "Sauti ya Wa Nyonge - Voix des Victimes",
+  title: "Sauti ya wa nyonge - Voix des Victimes",
   description:
     "Plateforme nationale de signalement et d'assistance aux victimes de violences sexuelles et basées sur le genre en RDC",
   generator: "v0.app",

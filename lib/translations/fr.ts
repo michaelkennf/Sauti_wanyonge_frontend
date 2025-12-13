@@ -52,7 +52,7 @@ export const fr = {
     },
     feature5: {
       title: "Engagement du gouvernement",
-      description: "Une initiative nationale soutenue par le gouvernement RDC, le PNUD et FONAREV."
+      description: "Une initiative nationale soutenue par le gouvernement RDC, FONAREV et les Nations Unies."
     }
   },
 
@@ -80,18 +80,18 @@ export const fr = {
 
   // Hero Section
   hero: {
-    subtitle: "Plateforme nationale de signalement et d'assistance pour les victimes de violences sexuelles et violences basées sur le genre (VBG). Anonyme, sécurisée et disponible 24h/24.",
-    depositComplaint: "Déposer une plainte",
+    subtitle: "Plateforme de signalement et de documentation des cas de violences sexuelles liées aux conflits et autres crimes graves. Anonyme, sécurisée et disponible 24h/24.",
+    depositComplaint: "Signaler un cas",
     talkToAssistant: "Parler à l'assistant virtuel",
-    trackComplaint: "Consulter une plainte"
+    trackComplaint: "Consulter un cas"
   },
 
   // Navigation
   nav: {
     home: "Accueil",
-    complaint: "Déposer une plainte",
+    complaint: "Signaler un cas",
     chatbot: "Chatbot IA",
-    tracking: "Consulter une plainte",
+    tracking: "Consulter un cas",
     about: "À propos",
     contact: "Contact",
     login: "Connexion",

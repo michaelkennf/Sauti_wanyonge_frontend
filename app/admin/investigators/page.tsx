@@ -106,7 +106,8 @@ export default function AdminManagementPage() {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      // Simulation de chargement des données
+      // TODO: Remplacer par des appels API réels via apiService
+      // Ces données mock sont temporaires et doivent être supprimées une fois l'API intégrée
       const mockInvestigators: Investigator[] = [
         {
           id: "INV001",
@@ -157,6 +158,8 @@ export default function AdminManagementPage() {
         },
       ]
 
+      // TODO: Remplacer par des appels API réels via apiService
+      // Ces données mock sont temporaires et doivent être supprimées une fois l'API intégrée
       const mockNGOs: NGO[] = [
         {
           id: "NGO001",

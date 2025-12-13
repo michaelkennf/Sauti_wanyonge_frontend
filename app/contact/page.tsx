@@ -183,25 +183,25 @@ export default function ContactPage() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <p className="font-semibold mb-1">Comment déposer une plainte ?</p>
+                    <p className="font-semibold mb-1">Comment signaler un cas ?</p>
                     <p className="text-muted-foreground text-sm">
                       <Link href="/plainte" className="text-primary hover:underline">
-                        Cliquez ici pour déposer une plainte
+                        Cliquez ici pour signaler un cas
                       </Link>
                     </p>
                   </div>
                   <div>
                     <p className="font-semibold mb-1">Est-ce anonyme ?</p>
                     <p className="text-muted-foreground text-sm">
-                      Oui, vous avez l'option de rester complètement anonyme lors du dépôt de votre plainte.
+                      Oui, vous avez l'option de rester complètement anonyme lors du signalement de votre cas.
                     </p>
                   </div>
                   <div>
-                    <p className="font-semibold mb-1">Comment suivre ma plainte ?</p>
+                    <p className="font-semibold mb-1">Comment suivre mon cas ?</p>
                     <p className="text-muted-foreground text-sm">
                       Entrez votre code de suivi sur la{" "}
                       <Link href="/suivi" className="text-primary hover:underline">
-                        page « Consulter une plainte »
+                        page « Consulter un cas »
                       </Link>
                     </p>
                   </div>

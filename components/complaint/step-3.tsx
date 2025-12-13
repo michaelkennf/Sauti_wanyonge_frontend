@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Download, Mail, Copy, Check, Loader2 } from "lucide-react"
+import { CheckCircle2, Download, Mail, Copy, Check, Loader2, Search } from "lucide-react"
 import { useState, useEffect } from "react"
 import type { ComplaintData } from "@/app/plainte/page"
 import Link from "next/link"
@@ -18,7 +18,7 @@ type Step3Props = {
 }
 
 export function ComplaintStep3({ data, onBack }: Step3Props) {
-  const { toast } = useToast()
+  const { addToast } = useToast()
   const [copied, setCopied] = useState(false)
   const [email, setEmail] = useState("")
   const [emailSent, setEmailSent] = useState(false)
@@ -93,33 +93,46 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
         const result = await response.json()
 
         if (!response.ok) {
-          throw new Error(result.message || result.error || 'Erreur lors de la soumission de la plainte')
+          throw new Error(result.message || result.error || 'Erreur lors de la soumission du cas')
         }
 
         if (result.success && result.data?.trackingCode) {
-          setUniqueCode(result.data.trackingCode)
-          toast({
-            title: "Succès",
-            description: "Votre plainte a été enregistrée avec succès",
-          })
+          const trackingCode = result.data.trackingCode
+          setUniqueCode(trackingCode)
+          
+          // Sauvegarder le code localement pour les plaintes anonymes
+          if (data.isAnonymous && typeof window !== 'undefined') {
+            try {
+              const savedCodes = JSON.parse(localStorage.getItem('anonymous_complaint_codes') || '[]')
+              if (!savedCodes.includes(trackingCode)) {
+                savedCodes.push({
+                  code: trackingCode,
+                  date: new Date().toISOString(),
+                  status: 'PENDING'
+                })
+                localStorage.setItem('anonymous_complaint_codes', JSON.stringify(savedCodes))
+              }
+            } catch (e) {
+              console.warn('Impossible de sauvegarder le code localement:', e)
+            }
+          }
+          
+          addToast("Votre cas a été enregistré avec succès. Conservez précieusement votre code de suivi !", "success")
         } else {
           throw new Error('Code de suivi non reçu du serveur')
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la soumission de la plainte'
+        const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la soumission du cas'
         setError(errorMessage)
-        toast({
-          title: "Erreur",
-          description: errorMessage,
-          variant: "destructive"
-        })
+        addToast(errorMessage, "error")
       } finally {
         setIsSubmitting(false)
       }
     }
 
     submitComplaint()
-  }, [data, uniqueCode, toast])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, uniqueCode])
 
   const copyCode = () => {
     if (uniqueCode && typeof window !== 'undefined' && navigator.clipboard) {
@@ -132,18 +145,39 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
   const downloadCode = () => {
     if (!uniqueCode) return
     
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+    const trackingUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/suivi`
+    
     const element = document.createElement("a")
     const file = new Blob(
       [
-        `Code de suivi de plainte: ${uniqueCode}\n\nConservez ce code précieusement pour suivre l'évolution de votre dossier sur https://sautiyawanyonge.cd/suivi\n\nDate de dépôt: ${new Date().toLocaleDateString("fr-FR")}`,
+        `CODE DE SUIVI DE CAS\n`,
+        `========================\n\n`,
+        `Code: ${uniqueCode}\n`,
+        `Date de dépôt: ${new Date().toLocaleDateString("fr-FR", { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}\n\n`,
+        `IMPORTANT:\n`,
+        `- Conservez ce code précieusement\n`,
+        `- Utilisez-le pour suivre l'évolution de votre dossier\n`,
+        `- Rendez-vous sur: ${trackingUrl}\n`,
+        `- Entrez ce code pour consulter votre cas\n\n`,
+        data.isAnonymous ? `⚠️ ATTENTION: Sans ce code, vous ne pourrez plus consulter votre cas anonyme.\n\n` : '',
+        `Merci d'avoir utilisé Sauti ya wa nyonge.`
       ],
-      { type: "text/plain" },
+      { type: "text/plain;charset=utf-8" },
     )
     element.href = URL.createObjectURL(file)
-    element.download = `code-plainte-${uniqueCode}.txt`
+    element.download = `code-cas-${uniqueCode}.txt`
     document.body.appendChild(element)
     element.click()
     document.body.removeChild(element)
+    
+    addToast("Le code a été téléchargé avec succès", "success")
   }
 
   const sendEmail = () => {
@@ -161,15 +195,15 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
             <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-500" />
           </div>
         </div>
-        <CardTitle className="text-2xl">Plainte enregistrée avec succès</CardTitle>
+        <CardTitle className="text-2xl">Cas enregistré avec succès</CardTitle>
         <CardDescription>
-          Votre plainte a été reçue et sera traitée dans les plus brefs délais. Conservez votre code confidentiel.
+          Votre cas a été reçu et sera traité dans les plus brefs délais. Conservez votre code confidentiel.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Summary */}
         <div className="bg-secondary/50 rounded-lg p-6 space-y-3">
-          <h3 className="font-semibold text-lg mb-4">Résumé de votre plainte</h3>
+          <h3 className="font-semibold text-lg mb-4">Résumé de votre cas</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Type d'incident:</span>
@@ -195,7 +229,7 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
           {isSubmitting ? (
             <div className="text-center py-8">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-              <p className="text-sm text-muted-foreground">Enregistrement de votre plainte...</p>
+              <p className="text-sm text-muted-foreground">Enregistrement de votre cas...</p>
             </div>
           ) : error ? (
             <div className="text-center py-8">
@@ -206,22 +240,53 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
             </div>
           ) : uniqueCode ? (
             <>
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">Votre code confidentiel unique</p>
-                <p className="text-3xl font-bold text-primary tracking-wider">{uniqueCode}</p>
+              <div className="text-center space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {data.isAnonymous 
+                      ? "Votre code confidentiel unique (Conservez-le précieusement !)" 
+                      : "Votre code confidentiel unique"}
+                  </p>
+                  <p className="text-3xl font-bold text-primary tracking-wider font-mono">{uniqueCode}</p>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                    📋 Comment utiliser ce code :
+                  </p>
+                  <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+                    <li>Conservez ce code en lieu sûr</li>
+                    <li>Utilisez-le pour suivre l'avancement de votre dossier</li>
+                    <li>Rendez-vous sur la page de suivi pour consulter votre cas</li>
+                    {data.isAnonymous && (
+                      <li className="font-semibold text-blue-900 dark:text-blue-100">
+                        ⚠️ Sans ce code, vous ne pourrez plus consulter votre cas
+                      </li>
+                    )}
+                  </ul>
+                </div>
               </div>
             </>
           ) : null}
 
           {uniqueCode && (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button onClick={copyCode} variant="outline" className="flex-1 gap-2 bg-transparent" disabled={!uniqueCode}>
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copied ? "Copié !" : "Copier le code"}
-              </Button>
-              <Button onClick={downloadCode} variant="outline" className="flex-1 gap-2 bg-transparent" disabled={!uniqueCode}>
-                <Download className="h-4 w-4" />
-                Télécharger
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button onClick={copyCode} variant="outline" className="flex-1 gap-2 bg-transparent" disabled={!uniqueCode}>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? "Copié !" : "Copier le code"}
+                </Button>
+                <Button onClick={downloadCode} variant="outline" className="flex-1 gap-2 bg-transparent" disabled={!uniqueCode}>
+                  <Download className="h-4 w-4" />
+                  Télécharger
+                </Button>
+              </div>
+              <Button 
+                onClick={() => window.location.href = '/suivi'} 
+                className="w-full gap-2"
+                variant="default"
+              >
+                <Search className="h-4 w-4" />
+                Suivre mon cas maintenant
               </Button>
             </div>
           )}
@@ -259,7 +324,7 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
           <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
             <li>• Vos données sont chiffrées et sécurisées</li>
             <li>• Seuls les services autorisés peuvent accéder à votre dossier</li>
-            <li>• Vous pouvez suivre l'évolution de votre plainte à tout moment</li>
+            <li>• Vous pouvez suivre l'évolution de votre cas à tout moment</li>
             <li>• Aucune information ne sera partagée sans votre consentement</li>
           </ul>
         </div>
@@ -267,7 +332,7 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <Button asChild variant="outline" className="flex-1 bg-transparent">
-            <Link href="/suivi">Suivre ma plainte</Link>
+            <Link href="/suivi">Suivre mon cas</Link>
           </Button>
           <Button asChild className="flex-1">
             <Link href="/">Retour à l'accueil</Link>
