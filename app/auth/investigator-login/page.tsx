@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Lock, Mail, Loader2, AlertCircle, ArrowLeft } from "lucide-react"
+import { Lock, Mail, Loader2, AlertCircle, ArrowLeft, Home } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -66,14 +66,16 @@ export default function InvestigatorLoginPage() {
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className="flex justify-center mb-4"
             >
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/logo-sauti-ya-wayonge.png"
-                  alt="Sauti ya wa nyonge"
-                  fill
-                  className="object-contain"
-                />
-              </div>
+              <Link href="/" className="cursor-pointer hover:opacity-80 transition-opacity">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/logo-sauti-ya-wayonge.png"
+                    alt="Sauti ya wa nyonge"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              </Link>
             </motion.div>
             <CardTitle className="text-2xl font-bold">
               Connexion Enquêteur
@@ -83,10 +85,16 @@ export default function InvestigatorLoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/auth/login-select" className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
-            </Link>
+            <div className="flex gap-4 mb-4">
+              <Link href="/auth/login-select" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Retour
+              </Link>
+              <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+                <Home className="h-4 w-4 mr-2" />
+                Accueil
+              </Link>
+            </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
