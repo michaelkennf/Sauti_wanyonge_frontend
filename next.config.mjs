@@ -27,7 +27,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: [
       "lucide-react",
-      "@radix-ui/react-slot", // Réactivé - composant critique pour Button
+      "@radix-ui/react-slot",
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",
       "@radix-ui/react-select",
@@ -35,8 +35,7 @@ const nextConfig = {
       "framer-motion",
       "recharts",
     ],
-    optimizeCss: true, // Critters installé
-    // Optimisations supplémentaires pour haute performance
+    optimizeCss: true,
     serverActions: {
       bodySizeLimit: '2mb',
     },
@@ -123,6 +122,9 @@ const nextConfig = {
   webpack: (config, { isServer, dev }) => {
     // Configuration pour éviter les problèmes de watch sur Windows/OneDrive
     // Toujours désactiver les liens symboliques (problème OneDrive)
+    if (!config.resolve) {
+      config.resolve = {}
+    }
     config.resolve.symlinks = false
     
     if (dev) {
@@ -139,12 +141,6 @@ const nextConfig = {
         followSymlinks: false, // Désactiver le suivi des liens symboliques (problème OneDrive)
       }
     }
-    
-    // Désactiver les liens symboliques dans la résolution (toujours, pas seulement en dev)
-    if (!config.resolve) {
-      config.resolve = {}
-    }
-    config.resolve.symlinks = false
     
     // Optimiser les chunks - Configuration avancée pour haute performance
     if (!isServer) {
@@ -188,22 +184,9 @@ const nextConfig = {
             },
           },
         },
-        // Tree shaking agressif
-        usedExports: true,
-        sideEffects: false,
       }
     }
     
-    // Résoudre les problèmes de résolution de module
-    config.resolve = {
-      ...config.resolve,
-      alias: {
-        ...config.resolve.alias,
-      },
-      fallback: {
-        ...config.resolve.fallback,
-      },
-    }
     return config
   },
 }
