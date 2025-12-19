@@ -26,7 +26,7 @@ const VIOLENCE_TYPES = [
   'Mariage forcé',
   'Proxénétisme',
   'Attentat à la pudeur',
-  'Crimes contre la paix et la sécurité de l'humanité'
+  "Crimes contre la paix et la sécurité de l'humanité"
 ]
 
 export function ViolenceStatsManagement() {
