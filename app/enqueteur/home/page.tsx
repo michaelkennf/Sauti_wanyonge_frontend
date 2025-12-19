@@ -54,7 +54,7 @@ export default function InvestigatorHomePage() {
               </div>
             </motion.div>
             <CardTitle className="text-2xl font-bold">
-              Documentation de cas
+              Documentation des cas
             </CardTitle>
             <CardDescription>
               Choisissez une action pour continuer

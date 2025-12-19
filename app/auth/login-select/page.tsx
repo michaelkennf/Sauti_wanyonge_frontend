@@ -65,7 +65,7 @@ export default function LoginSelectPage() {
                         <div>
                           <h3 className="font-semibold text-lg">Connexion Enquêteur</h3>
                           <p className="text-sm text-muted-foreground mt-2">
-                            Accédez à votre Documentation de cas
+                            Accédez à votre Documentation des cas
                           </p>
                         </div>
                       </div>
