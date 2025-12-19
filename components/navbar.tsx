@@ -78,6 +78,7 @@ export function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
+          {/* Ordre important: Accueil → Signaler un cas → Consulter un cas → Chatbot IA */}
           <div className="hidden md:flex items-center gap-2">
             <Link href="/">
               <Button variant="ghost" size="sm" className="relative overflow-hidden group">
@@ -85,21 +86,24 @@ export function Navbar() {
                 <div className="absolute inset-0 bg-primary/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
               </Button>
             </Link>
+            {/* 1. Signaler un cas */}
             <Link href="/plainte">
               <Button variant="ghost" size="sm" className="relative overflow-hidden group">
                 <span className="relative z-10">{t('nav.complaint')}</span>
                 <div className="absolute inset-0 bg-primary/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
               </Button>
             </Link>
-            <Link href="/chatbot">
-              <Button variant="ghost" size="sm" className="relative overflow-hidden group">
-                <span className="relative z-10">{t('nav.chatbot')}</span>
-                <div className="absolute inset-0 bg-primary/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
-              </Button>
-            </Link>
+            {/* 2. Consulter un cas - DOIT être entre Signaler un cas et Chatbot IA */}
             <Link href="/suivi">
               <Button variant="ghost" size="sm" className="relative overflow-hidden group">
                 <span className="relative z-10">{t('nav.tracking')}</span>
+                <div className="absolute inset-0 bg-primary/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
+              </Button>
+            </Link>
+            {/* 3. Chatbot IA */}
+            <Link href="/chatbot">
+              <Button variant="ghost" size="sm" className="relative overflow-hidden group">
+                <span className="relative z-10">{t('nav.chatbot')}</span>
                 <div className="absolute inset-0 bg-primary/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
               </Button>
             </Link>
@@ -207,6 +211,7 @@ export function Navbar() {
         {/* Mobile Navigation */}
         {isOpen && (
           <div className="md:hidden py-4 space-y-3 border-t border-border/40 animate-in slide-in-from-top-2 duration-300">
+            {/* Mobile Navigation - Ordre: Accueil → Signaler un cas → Consulter un cas → Chatbot IA */}
             <Link
               href="/"
               className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-md transition-colors"
@@ -214,6 +219,7 @@ export function Navbar() {
             >
               {t('nav.home')}
             </Link>
+            {/* 1. Signaler un cas */}
             <Link
               href="/plainte"
               className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-md transition-colors"
@@ -221,19 +227,21 @@ export function Navbar() {
             >
               {t('nav.complaint')}
             </Link>
-            <Link
-              href="/chatbot"
-              className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-md transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              {t('nav.chatbot')}
-            </Link>
+            {/* 2. Consulter un cas - DOIT être entre Signaler un cas et Chatbot IA */}
             <Link
               href="/suivi"
               className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-md transition-colors"
               onClick={() => setIsOpen(false)}
             >
               {t('nav.tracking')}
+            </Link>
+            {/* 3. Chatbot IA */}
+            <Link
+              href="/chatbot"
+              className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-md transition-colors"
+              onClick={() => setIsOpen(false)}
+            >
+              {t('nav.chatbot')}
             </Link>
             <Link
               href="/about"

@@ -58,9 +58,9 @@ export function HeroSection() {
               variant="outline"
               className="bg-white/10 backdrop-blur-sm border-2 border-white text-white hover:bg-white hover:text-primary gap-2 min-w-[220px] h-14 text-lg font-semibold transition-all duration-300"
             >
-              <Link href="/chatbot">
-                <MessageCircle className="h-5 w-5" />
-                {t('hero.talkToAssistant')}
+              <Link href="/suivi">
+                <Search className="h-5 w-5" />
+                {t('hero.trackComplaint')}
               </Link>
             </Button>
 
@@ -70,9 +70,9 @@ export function HeroSection() {
               variant="outline"
               className="bg-white/10 backdrop-blur-sm border-2 border-white text-white hover:bg-white hover:text-primary gap-2 min-w-[220px] h-14 text-lg font-semibold transition-all duration-300"
             >
-              <Link href="/suivi">
-                <Search className="h-5 w-5" />
-                {t('hero.trackComplaint')}
+              <Link href="/chatbot">
+                <MessageCircle className="h-5 w-5" />
+                {t('hero.talkToAssistant')}
               </Link>
             </Button>
           </div>
