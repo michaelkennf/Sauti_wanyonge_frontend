@@ -39,8 +39,7 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
         // Récupérer le token CSRF avec credentials pour obtenir le cookie
         let csrfToken = ''
         try {
-          const baseUrl = API_URL.replace('/api', '')
-          const csrfResponse = await fetch(`${baseUrl}/api/csrf-token`, {
+          const csrfResponse = await fetch(`${API_BASE_URL}/api/csrf-token`, {
             method: 'GET',
             credentials: 'include', // Important : inclure les cookies
           })
@@ -136,8 +135,7 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
             })
 
             // Utiliser l'URL de base sans /api pour construire l'URL complète
-            const baseUrl = API_URL.replace('/api', '')
-            const uploadResponse = await fetch(`${baseUrl}/api/uploads/public`, {
+            const uploadResponse = await fetch(`${API_BASE_URL}/api/uploads/public`, {
               method: 'POST',
               body: formData,
               // Ne pas définir Content-Type, laisser le navigateur le faire pour FormData

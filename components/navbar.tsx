@@ -70,7 +70,7 @@ export function Navbar() {
                   </div>
                   <div className="flex flex-col items-start">
                     <span className="hidden md:block text-xl font-semibold text-foreground">Sauti ya wa nyonge</span>
-                    <span className="hidden md:block text-xs text-muted-foreground italic">"La voix des victimes"</span>
+                    <span className="hidden md:block text-xs text-muted-foreground italic font-bold">"La voix des victimes"</span>
                   </div>
                 </div>
               </div>

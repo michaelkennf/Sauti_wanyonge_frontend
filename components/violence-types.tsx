@@ -45,7 +45,7 @@ const violenceTypes = [
     type: "Crimes contre la paix et la sécurité de l'humanité",
     image: "/african-woman-showing-inner-strength.jpg",
     description:
-      "Crimes contre la paix et la sécurité de l'humanité : Crime de génocide, Crimes contre l'humanité, Crimes de guerre.",
+      "Crime de génocide, Crimes contre l'humanité, Crimes de guerre.",
   },
 ]
 
@@ -145,7 +145,7 @@ export function ViolenceTypes() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.05 }}
                 onMouseEnter={() => setSelectedIndex(index)}
-                className="group relative h-48"
+                className="group relative h-64"
                 style={{ perspective: "1000px" }}
               >
                 <motion.div
@@ -157,27 +157,28 @@ export function ViolenceTypes() {
                 >
                   {/* Front of card - Type en haut (titre), description en bas */}
                   <div
-                    className={`absolute inset-0 p-6 rounded-lg border transition-all duration-300 flex flex-col justify-between ${
+                    className={`absolute inset-0 p-3 rounded-lg border transition-all duration-300 flex flex-col justify-between overflow-hidden ${
                       selectedIndex === index
                         ? "bg-primary text-primary-foreground border-primary shadow-lg"
                         : "bg-card border-border hover:border-primary hover:shadow-lg"
                     }`}
                     style={{ backfaceVisibility: "hidden" }}
                   >
-                    <div className="flex-1 flex items-start">
+                    <div className="flex-shrink-0 pb-2">
                       <p
-                        className={`text-center font-semibold text-lg transition-colors w-full ${
+                        className={`text-center font-semibold text-base transition-colors w-full ${
                           selectedIndex === index ? "text-primary-foreground" : "text-foreground group-hover:text-primary"
                         }`}
                       >
                         {item.type}
                       </p>
                     </div>
-                    <div className="mt-auto">
+                    <div className="flex-1 overflow-y-auto min-h-0">
                       <p
-                        className={`text-sm text-center leading-relaxed ${
+                        className={`text-base text-center leading-relaxed break-words hyphens-auto ${
                           selectedIndex === index ? "text-primary-foreground/90" : "text-muted-foreground"
                         }`}
+                        style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
                       >
                         {item.description}
                       </p>

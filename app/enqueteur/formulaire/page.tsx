@@ -53,7 +53,8 @@ import {
   FileVideo,
   FileText as FileTextIcon,
   Eye,
-  EyeOff
+  EyeOff,
+  Edit
 } from "lucide-react"
 import { BiometricManager } from "@/components/biometric-manager"
 import { useToast } from "@/components/ui/use-toast"
@@ -147,6 +148,7 @@ export default function InvestigatorFormPage() {
   const [showOtherCrimesDialog, setShowOtherCrimesDialog] = useState(false)
   const [otherCrimesDetails, setOtherCrimesDetails] = useState("")
   const [lastBeneficiaryNatureOfFacts, setLastBeneficiaryNatureOfFacts] = useState("")
+  const [isFinalBiometricValidated, setIsFinalBiometricValidated] = useState(false) // Validation biométrique finale pour soumission
   const [formData, setFormData] = useState<FormData>({
     beneficiaryName: "",
     beneficiarySex: "",
@@ -519,6 +521,15 @@ export default function InvestigatorFormPage() {
       return
     }
 
+    if (!isFinalBiometricValidated) {
+      toast({
+        title: "Validation finale requise",
+        description: "Vous devez valider avec votre empreinte biométrique avant de soumettre",
+        variant: "destructive"
+      })
+      return
+    }
+
     // Vérifier que la date de naissance est renseignée et calculer l'âge si nécessaire
     if (!formData.beneficiaryBirthDate) {
       toast({
@@ -781,7 +792,7 @@ export default function InvestigatorFormPage() {
     setOtherStatusDetails("")
   }
 
-  // Gestion du dialogue "Crimes contre la paix et la sécurité de l'humanité" pour la nature des faits
+  // Gestion du dialogue "Autres crimes graves" pour la nature des faits
   const handleOtherCrimesConfirm = () => {
     if (!otherCrimesDetails.trim()) {
       toast({
@@ -791,7 +802,7 @@ export default function InvestigatorFormPage() {
       })
       return
     }
-    const natureValue = `Crimes contre la paix et la sécurité de l'humanité: ${otherCrimesDetails}`
+    const natureValue = `Autres crimes graves: ${otherCrimesDetails}`
     setFormData(prev => ({ 
       ...prev, 
       beneficiaryNatureOfFacts: natureValue,
@@ -799,6 +810,16 @@ export default function InvestigatorFormPage() {
     }))
     setShowOtherCrimesDialog(false)
     setOtherCrimesDetails("")
+  }
+
+  const handleClearOtherCrimes = () => {
+    setOtherCrimesDetails("")
+    setFormData(prev => ({ 
+      ...prev, 
+      beneficiaryNatureOfFacts: "",
+      incidentType: ""
+    }))
+    setShowOtherCrimesDialog(false)
   }
 
   // Rendu des étapes
@@ -958,7 +979,7 @@ export default function InvestigatorFormPage() {
             <Select 
               value={formData.beneficiaryNatureOfFacts} 
               onValueChange={(value) => {
-                if (value === "Crimes contre la paix et la sécurité de l'humanité") {
+                if (value === "Autres crimes graves") {
                   setShowOtherCrimesDialog(true)
                 } else {
                   setFormData(prev => ({ ...prev, beneficiaryNatureOfFacts: value }))
@@ -975,7 +996,7 @@ export default function InvestigatorFormPage() {
                 <SelectItem value="Mariage forcé">Mariage forcé</SelectItem>
                 <SelectItem value="Proxénétisme">Proxénétisme</SelectItem>
                 <SelectItem value="Attentat à la pudeur">Attentat à la pudeur</SelectItem>
-                <SelectItem value="Crimes contre la paix et la sécurité de l'humanité">Crimes contre la paix et la sécurité de l'humanité</SelectItem>
+                <SelectItem value="Autres crimes graves">Autres crimes graves</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -992,7 +1013,7 @@ export default function InvestigatorFormPage() {
           <Select 
             value={formData.incidentType} 
             onValueChange={(value) => {
-              if (value === "Crimes contre la paix et la sécurité de l'humanité") {
+              if (value === "Autres crimes graves") {
                 setShowOtherCrimesDialog(true)
               } else {
                 setFormData(prev => ({ ...prev, incidentType: value }))
@@ -1009,7 +1030,7 @@ export default function InvestigatorFormPage() {
               <SelectItem value="Mariage forcé">Mariage forcé</SelectItem>
               <SelectItem value="Proxénétisme">Proxénétisme</SelectItem>
               <SelectItem value="Attentat à la pudeur">Attentat à la pudeur</SelectItem>
-              <SelectItem value="Crimes contre la paix et la sécurité de l'humanité">Crimes contre la paix et la sécurité de l'humanité</SelectItem>
+              <SelectItem value="Autres crimes graves">Autres crimes graves</SelectItem>
             </SelectContent>
           </Select>
           {formData.beneficiaryNatureOfFacts && formData.incidentType === formData.beneficiaryNatureOfFacts && (
@@ -1412,11 +1433,29 @@ export default function InvestigatorFormPage() {
         <CheckCircle className="h-4 w-4" />
         <AlertDescription>
           <strong>Récapitulatif :</strong> Vérifiez toutes les informations avant soumission
+          {!isFinalBiometricValidated && (
+            <span className="block mt-2 text-sm font-normal">
+              Vous pouvez modifier les informations avant la validation biométrique finale.
+            </span>
+          )}
         </AlertDescription>
       </Alert>
 
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Informations du bénéficiaire</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Informations du bénéficiaire</h3>
+          {!isFinalBiometricValidated && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentStep(1)}
+              className="gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Modifier
+            </Button>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <span className="font-medium">Nom :</span> {formData.beneficiaryName}
@@ -1443,7 +1482,20 @@ export default function InvestigatorFormPage() {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Incident</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Incident</h3>
+          {!isFinalBiometricValidated && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentStep(2)}
+              className="gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Modifier
+            </Button>
+          )}
+        </div>
         <div className="text-sm space-y-1">
           <div><span className="font-medium">Type :</span> {formData.incidentType}</div>
           <div><span className="font-medium">Date :</span> {formData.incidentDate}</div>
@@ -1453,7 +1505,20 @@ export default function InvestigatorFormPage() {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Preuves collectées</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Preuves collectées</h3>
+          {!isFinalBiometricValidated && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentStep(3)}
+              className="gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Modifier
+            </Button>
+          )}
+        </div>
         <div className="text-sm">
           <div>• Photo du bénéficiaire : {formData.beneficiaryPhoto ? "✓ Ajoutée" : "✗ Manquante"}</div>
           <div>• Document d'identité : {formData.idDocumentNumber ? "✓ Renseigné" : "✗ Manquant"}</div>
@@ -1461,6 +1526,26 @@ export default function InvestigatorFormPage() {
           <div>• Enregistrement vidéo : {formData.beneficiaryVideo ? "✓ Ajouté" : "✗ Manquant"}</div>
           <div>• Capture biométrique : {formData.beneficiaryFingerprint || formData.beneficiaryFaceScan ? "✓ Effectuée" : "✗ Manquante"}</div>
           <div>• Commentaire enquêteur : {formData.investigatorComment ? "✓ Rédigé" : "✗ Manquant"}</div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Commentaire enquêteur</h3>
+          {!isFinalBiometricValidated && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentStep(4)}
+              className="gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Modifier
+            </Button>
+          )}
+        </div>
+        <div className="text-sm p-3 bg-muted/50 rounded-lg">
+          {formData.investigatorComment || "Aucun commentaire"}
         </div>
       </div>
 
@@ -1499,17 +1584,42 @@ export default function InvestigatorFormPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Placez votre doigt sur le capteur pour valider la soumission
             </p>
-            <Button className="w-full" size="lg" onClick={() => {
-              // Simuler la validation biométrique
-              toast({
-                title: "Validation biométrique",
-                description: "Vérification en cours...",
-              })
-              // Ici, vous pouvez ajouter la logique de validation biométrique réelle
-            }}>
+            <Button 
+              className="w-full" 
+              size="lg" 
+              onClick={async () => {
+                // Simuler la validation biométrique
+                toast({
+                  title: "Validation biométrique",
+                  description: "Vérification en cours...",
+                })
+                
+                // Simuler un délai de validation
+                await new Promise(resolve => setTimeout(resolve, 1500))
+                
+                // Marquer la validation comme effectuée
+                setIsFinalBiometricValidated(true)
+                
+                toast({
+                  title: "Validation réussie",
+                  description: "Votre identité a été vérifiée. Vous pouvez maintenant soumettre le formulaire.",
+                })
+                
+                // Ici, vous pouvez ajouter la logique de validation biométrique réelle
+              }}
+              disabled={isFinalBiometricValidated}
+            >
               <Fingerprint className="h-4 w-4 mr-2" />
-              Valider avec empreinte
+              {isFinalBiometricValidated ? "✓ Validé" : "Valider avec empreinte"}
             </Button>
+            {isFinalBiometricValidated && (
+              <Alert className="mt-4">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Validation effectuée :</strong> Les modifications ne sont plus possibles. Vous pouvez maintenant soumettre le formulaire.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1560,23 +1670,6 @@ export default function InvestigatorFormPage() {
                     <CheckCircle2 className="h-3 w-3" />
                     Identité vérifiée
                   </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsBiometricVerified(false)}
-                  >
-                    <Fingerprint className="h-4 w-4 mr-2" />
-                    Re-vérifier
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={saveOffline}
-                    className="gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    Sauvegarder
-                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1669,7 +1762,7 @@ export default function InvestigatorFormPage() {
                     <Button 
                       variant="outline" 
                       onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-                      disabled={currentStep === 1}
+                      disabled={currentStep === 1 || (currentStep === 5 && isFinalBiometricValidated)}
                       className="gap-2"
                     >
                       <ArrowLeft className="h-4 w-4" />
@@ -1687,7 +1780,7 @@ export default function InvestigatorFormPage() {
                     ) : (
                       <Button
                         onClick={handleSubmit}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !isFinalBiometricValidated}
                         className="gap-2"
                       >
                         {isSubmitting ? (
@@ -1698,7 +1791,7 @@ export default function InvestigatorFormPage() {
                         ) : (
                           <>
                             <Send className="h-4 w-4" />
-                            Soumettre
+                            {isFinalBiometricValidated ? "Soumettre" : "Valider d'abord votre empreinte"}
                           </>
                         )}
                       </Button>
@@ -1750,34 +1843,40 @@ export default function InvestigatorFormPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog pour "Crimes contre la paix et la sécurité de l'humanité" */}
+      {/* Dialog pour "Autres crimes graves" */}
       <Dialog open={showOtherCrimesDialog} onOpenChange={setShowOtherCrimesDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Préciser le type de crime</DialogTitle>
             <DialogDescription>
-              Veuillez préciser de quel type de crime contre la paix et la sécurité de l'humanité il s'agit.
+              Veuillez préciser de quel type de crime grave il s'agit.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="otherCrimesDetails">
-                Type de crime <span className="text-destructive">*</span>
+                Détails du crime <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="otherCrimesDetails"
-                placeholder="Exemples: Crime de génocide, Crimes contre l'humanité, Crimes de guerre"
+                placeholder="Exemples: Crime de génocide, Crimes contre l'humanité, Crimes de guerre, Traite des personnes, Torture, etc."
                 value={otherCrimesDetails}
                 onChange={(e) => setOtherCrimesDetails(e.target.value)}
                 rows={4}
                 className="resize-none"
               />
               <p className="text-xs text-muted-foreground mt-2">
-                Crimes contre la paix et la sécurité de l'humanité : Crime de génocide, Crimes contre l'humanité, Crimes de guerre
+                Exemples: Crimes contre la paix et la sécurité de l'humanité (Crime de génocide, Crimes contre l'humanité, Crimes de guerre), Traite des personnes, Torture, etc.
               </p>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleClearOtherCrimes}
+            >
+              Effacer
+            </Button>
             <Button
               variant="outline"
               onClick={() => {

@@ -6,6 +6,8 @@ import { Footer } from "@/components/footer"
 import { ComplaintStep1 } from "@/components/complaint/step-1"
 import { ComplaintStep2 } from "@/components/complaint/step-2"
 import { ComplaintStep3 } from "@/components/complaint/step-3"
+import { ToastContainer } from "@/components/ui/toast"
+import { useToast } from "@/hooks/use-toast"
 import { motion, AnimatePresence } from "framer-motion"
 
 export type ComplaintData = {
@@ -24,6 +26,7 @@ export type ComplaintData = {
 }
 
 export default function ComplaintPage() {
+  const { toasts, removeToast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [complaintData, setComplaintData] = useState<Partial<ComplaintData>>({
     isAnonymous: true,
@@ -134,6 +137,7 @@ export default function ComplaintPage() {
         </div>
       </main>
       <Footer />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

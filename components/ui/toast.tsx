@@ -31,16 +31,29 @@ export function Toast({ message, type, onClose, duration = 5000 }: ToastProps) {
     info: "bg-blue-50 border-blue-200",
   }
 
+  const textColors = {
+    success: "text-green-800 dark:text-green-200",
+    error: "text-red-800 dark:text-red-200",
+    info: "text-blue-800 dark:text-blue-200",
+  }
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: -50, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -50, scale: 0.9 }}
-      className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${bgColors[type]} max-w-md`}
+      initial={{ opacity: 0, y: -50, scale: 0.9, x: 100 }}
+      animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
+      exit={{ opacity: 0, y: -50, scale: 0.9, x: 100 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className={`fixed top-4 right-4 z-50 flex items-start gap-3 px-5 py-4 rounded-xl border-2 shadow-2xl backdrop-blur-sm ${bgColors[type]} dark:${bgColors[type].replace('50', '900/30')} max-w-md`}
     >
-      {icons[type]}
-      <p className="flex-1 text-sm font-medium text-foreground">{message}</p>
-      <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+      <div className="flex-shrink-0 mt-0.5">
+        {icons[type]}
+      </div>
+      <p className={`flex-1 text-sm font-semibold leading-relaxed ${textColors[type]}`}>{message}</p>
+      <button 
+        onClick={onClose} 
+        className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-black/5 dark:hover:bg-white/5"
+        aria-label="Fermer"
+      >
         <X className="h-4 w-4" />
       </button>
     </motion.div>
@@ -54,12 +67,14 @@ interface ToastContainerProps {
 
 export function ToastContainer({ toasts, removeToast }: ToastContainerProps) {
   return (
-    <AnimatePresence>
-      {toasts.map((toast, index) => (
-        <div key={toast.id} style={{ top: `${4 + index * 80}px` }} className="fixed right-4 z-50">
-          <Toast message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
-        </div>
-      ))}
-    </AnimatePresence>
+    <div className="fixed top-4 right-4 z-50 space-y-3 pointer-events-none">
+      <AnimatePresence>
+        {toasts.map((toast) => (
+          <div key={toast.id} className="pointer-events-auto">
+            <Toast message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
+          </div>
+        ))}
+      </AnimatePresence>
+    </div>
   )
 }

@@ -30,7 +30,7 @@ const incidentTypes = [
   "Mariage forcé",
   "Proxénétisme",
   "Attentat à la pudeur",
-  "Crimes contre la paix et la sécurité de l'humanité",
+  "Autres crimes graves",
 ]
 
 const needsOptions = [
@@ -115,11 +115,31 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
 
   // Mettre à jour le preview vidéo quand le stream change
   useEffect(() => {
-    if (videoRecorder.isRecording && videoRecorder.stream && videoPreviewRef.current) {
-      videoPreviewRef.current.srcObject = videoRecorder.stream
-      videoPreviewRef.current.play().catch(console.error)
-    } else if (!videoRecorder.isRecording && videoPreviewRef.current) {
-      videoPreviewRef.current.srcObject = null
+    const videoElement = videoPreviewRef.current
+    if (!videoElement) return
+
+    if (videoRecorder.isRecording && videoRecorder.stream) {
+      // S'assurer que le stream est bien connecté
+      videoElement.srcObject = videoRecorder.stream
+      videoElement.muted = true // Nécessaire pour autoplay
+      videoElement.playsInline = true
+      
+      // Forcer la lecture
+      videoElement.play().catch((error) => {
+        console.warn('Erreur lors de la lecture du preview vidéo:', error)
+      })
+    } else {
+      // Nettoyer seulement quand l'enregistrement est vraiment terminé
+      if (!videoRecorder.isRecording) {
+        videoElement.srcObject = null
+      }
+    }
+
+    // Nettoyage
+    return () => {
+      if (videoElement && !videoRecorder.isRecording) {
+        videoElement.srcObject = null
+      }
     }
   }, [videoRecorder.isRecording, videoRecorder.stream])
 
@@ -165,9 +185,15 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
       })
       return
     }
-    setIncidentType(`Crimes contre la paix et la sécurité de l'humanité: ${otherCrimesDetails}`)
+    setIncidentType(`Autres crimes graves: ${otherCrimesDetails}`)
     setShowOtherCrimesDialog(false)
     setOtherCrimesDetails("")
+  }
+
+  const handleClearOtherCrimes = () => {
+    setOtherCrimesDetails("")
+    setIncidentType("")
+    setShowOtherCrimesDialog(false)
   }
 
   const handleNext = () => {
@@ -202,7 +228,7 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
           <Select 
             value={incidentType} 
             onValueChange={(value) => {
-              if (value === "Crimes contre la paix et la sécurité de l'humanité") {
+              if (value === "Autres crimes graves") {
                 setShowOtherCrimesDialog(true)
               } else {
                 setIncidentType(value)
@@ -312,15 +338,21 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
           />
           {/* Preview vidéo pendant l'enregistrement */}
           {recordingType === 'video' && videoRecorder.isRecording && (
-            <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+            <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border-2 border-destructive">
               <video
                 ref={videoPreviewRef}
                 autoPlay
                 playsInline
                 muted
                 className="w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }} // Miroir pour selfie
               />
-              <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground px-2 py-1 rounded text-sm font-medium flex items-center gap-2">
+              {!videoRecorder.stream && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                  <p className="text-white text-sm">Initialisation de la caméra...</p>
+                </div>
+              )}
+              <div className="absolute top-2 right-2 bg-destructive/90 backdrop-blur-sm text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg">
                 <div className="w-2 h-2 bg-destructive-foreground rounded-full animate-pulse" />
                 Enregistrement ({videoRecorder.duration}s)
               </div>
@@ -328,21 +360,65 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
           )}
 
           {evidence.length > 0 && (
-            <div className="space-y-2">
-              {evidence.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded-md">
-                  <span className="text-sm truncate flex-1">{file.name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFile(index)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+            <div className="space-y-3">
+              {evidence.map((file, index) => {
+                const isAudio = file.type.startsWith('audio/')
+                const isVideo = file.type.startsWith('video/')
+                const fileUrl = URL.createObjectURL(file)
+                
+                return (
+                  <div key={index} className="flex flex-col gap-2 p-3 bg-secondary rounded-lg border border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium truncate flex-1">{file.name}</span>
+                      <div className="flex items-center gap-2">
+                        {(isAudio || isVideo) && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (isAudio) {
+                                const audio = new Audio(fileUrl)
+                                audio.play().catch(console.error)
+                              } else if (isVideo) {
+                                const video = document.createElement('video')
+                                video.src = fileUrl
+                                video.controls = true
+                                video.style.width = '100%'
+                                video.style.maxWidth = '500px'
+                                const container = document.createElement('div')
+                                container.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/80'
+                                container.onclick = () => container.remove()
+                                container.appendChild(video)
+                                document.body.appendChild(container)
+                                video.play().catch(console.error)
+                              }
+                            }}
+                            className="h-8 px-3"
+                          >
+                            {isAudio ? '▶️ Écouter' : '▶️ Voir'}
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            URL.revokeObjectURL(fileUrl)
+                            removeFile(index)
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
+                    </p>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -371,34 +447,40 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
         </div>
       </CardContent>
 
-      {/* Dialog pour "Crimes contre la paix et la sécurité de l'humanité" */}
+      {/* Dialog pour "Autres crimes graves" */}
       <Dialog open={showOtherCrimesDialog} onOpenChange={setShowOtherCrimesDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Préciser le type de crime</DialogTitle>
             <DialogDescription>
-              Veuillez préciser de quel type de crime contre la paix et la sécurité de l'humanité il s'agit.
+              Veuillez préciser de quel type de crime grave il s'agit.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="otherCrimesDetails">
-                Type de crime <span className="text-destructive">*</span>
+                Détails du crime <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="otherCrimesDetails"
-                placeholder="Exemples: Crime de génocide, Crimes contre l'humanité, Crimes de guerre"
+                placeholder="Exemples: Crime de génocide, Crimes contre l'humanité, Crimes de guerre, Traite des personnes, Torture, etc."
                 value={otherCrimesDetails}
                 onChange={(e) => setOtherCrimesDetails(e.target.value)}
                 rows={4}
                 className="resize-none"
               />
               <p className="text-xs text-muted-foreground mt-2">
-                Crimes contre la paix et la sécurité de l'humanité : Crime de génocide, Crimes contre l'humanité, Crimes de guerre
+                Exemples: Crimes contre la paix et la sécurité de l'humanité (Crime de génocide, Crimes contre l'humanité, Crimes de guerre), Traite des personnes, Torture, etc.
               </p>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleClearOtherCrimes}
+            >
+              Effacer
+            </Button>
             <Button
               variant="outline"
               onClick={() => {
