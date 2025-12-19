@@ -30,7 +30,7 @@ const incidentTypes = [
   "Mariage forcé",
   "Proxénétisme",
   "Attentat à la pudeur",
-  "Autres crimes graves",
+  "Crimes contre la paix et la sécurité de l'humanité",
 ]
 
 const needsOptions = [
@@ -59,6 +59,7 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
   
   // Hook pour l'enregistrement vidéo
   const videoRecorder = useMediaRecorder({ maxDuration: 35, videoOnly: false })
+  const videoPreviewRef = useRef<HTMLVideoElement>(null)
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -94,6 +95,10 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
     if (videoRecorder.isRecording) {
       videoRecorder.stopRecording()
       setRecordingType(null)
+      // Arrêter le preview vidéo
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = null
+      }
     } else {
       try {
         await videoRecorder.startRecording()
@@ -107,6 +112,16 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
       }
     }
   }
+
+  // Mettre à jour le preview vidéo quand le stream change
+  useEffect(() => {
+    if (videoRecorder.isRecording && videoRecorder.stream && videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = videoRecorder.stream
+      videoPreviewRef.current.play().catch(console.error)
+    } else if (!videoRecorder.isRecording && videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = null
+    }
+  }, [videoRecorder.isRecording, videoRecorder.stream])
 
   // Ajouter les enregistrements aux preuves quand ils sont terminés
   useEffect(() => {
@@ -145,12 +160,12 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
     if (!otherCrimesDetails.trim()) {
       toast({
         title: "Champ requis",
-        description: "Veuillez préciser de quel type de crime grave il s'agit.",
+        description: "Veuillez préciser de quel type de crime il s'agit.",
         variant: "destructive"
       })
       return
     }
-    setIncidentType(`Autres crimes graves: ${otherCrimesDetails}`)
+    setIncidentType(`Crimes contre la paix et la sécurité de l'humanité: ${otherCrimesDetails}`)
     setShowOtherCrimesDialog(false)
     setOtherCrimesDetails("")
   }
@@ -187,7 +202,7 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
           <Select 
             value={incidentType} 
             onValueChange={(value) => {
-              if (value === "Autres crimes graves") {
+              if (value === "Crimes contre la paix et la sécurité de l'humanité") {
                 setShowOtherCrimesDialog(true)
               } else {
                 setIncidentType(value)
@@ -295,6 +310,23 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
             onChange={handleFileUpload}
             className="hidden"
           />
+          {/* Preview vidéo pendant l'enregistrement */}
+          {recordingType === 'video' && videoRecorder.isRecording && (
+            <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+              <video
+                ref={videoPreviewRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground px-2 py-1 rounded text-sm font-medium flex items-center gap-2">
+                <div className="w-2 h-2 bg-destructive-foreground rounded-full animate-pulse" />
+                Enregistrement ({videoRecorder.duration}s)
+              </div>
+            </div>
+          )}
+
           {evidence.length > 0 && (
             <div className="space-y-2">
               {evidence.map((file, index) => (
@@ -339,28 +371,31 @@ export function ComplaintStep2({ data, updateData, onNext, onBack }: Step2Props)
         </div>
       </CardContent>
 
-      {/* Dialog pour "Autres crimes graves" */}
+      {/* Dialog pour "Crimes contre la paix et la sécurité de l'humanité" */}
       <Dialog open={showOtherCrimesDialog} onOpenChange={setShowOtherCrimesDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Préciser le type de crime grave</DialogTitle>
+            <DialogTitle>Préciser le type de crime</DialogTitle>
             <DialogDescription>
-              Veuillez décrire de quel type de crime grave il s'agit.
+              Veuillez préciser de quel type de crime contre la paix et la sécurité de l'humanité il s'agit.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="otherCrimesDetails">
-                Détails du crime <span className="text-destructive">*</span>
+                Type de crime <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="otherCrimesDetails"
-                placeholder="Ex: Traite des personnes, Torture, Assassinat, etc."
+                placeholder="Exemples: Crime de génocide, Crimes contre l'humanité, Crimes de guerre"
                 value={otherCrimesDetails}
                 onChange={(e) => setOtherCrimesDetails(e.target.value)}
                 rows={4}
                 className="resize-none"
               />
+              <p className="text-xs text-muted-foreground mt-2">
+                Crimes contre la paix et la sécurité de l'humanité : Crime de génocide, Crimes contre l'humanité, Crimes de guerre
+              </p>
             </div>
           </div>
           <DialogFooter>

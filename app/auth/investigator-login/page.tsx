@@ -72,6 +72,7 @@ export default function InvestigatorLoginPage() {
                     src="/logo-sauti-ya-wayonge.png"
                     alt="Sauti ya wa nyonge"
                     fill
+                    sizes="64px"
                     className="object-contain"
                   />
                 </div>

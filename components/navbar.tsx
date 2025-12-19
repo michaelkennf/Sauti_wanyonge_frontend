@@ -63,11 +63,16 @@ export function Navbar() {
             </div>
             
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex items-center gap-3">
-                <div className="relative h-16 w-16 hover:scale-105 transition-transform duration-200">
-                  <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya wa nyonge Logo" fill className="object-contain" />
+              <div className="flex flex-col items-start gap-0.5">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-16 w-16 hover:scale-105 transition-transform duration-200">
+                    <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya wa nyonge Logo" fill className="object-contain" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="hidden md:block text-xl font-semibold text-foreground">Sauti ya wa nyonge</span>
+                    <span className="hidden md:block text-xs text-muted-foreground italic">"La voix des victimes"</span>
+                  </div>
                 </div>
-                <span className="hidden md:block text-xl font-semibold text-foreground">Sauti ya wa nyonge</span>
               </div>
             </Link>
           </div>

@@ -78,7 +78,7 @@ export function AboutCards() {
           alt: "ONU Femmes",
         },
         {
-          src: "/pnud.png",
+          src: "/PNUD_bleu.png",
           alt: "PNUD RDC",
         },
       ],

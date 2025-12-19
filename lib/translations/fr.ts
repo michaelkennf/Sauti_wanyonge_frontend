@@ -17,7 +17,7 @@ export const fr = {
     title: "Comment ça marche ?",
     subtitle: "Un processus simple et sécurisé en 3 étapes pour vous accompagner",
     step1: {
-      title: "1. Déposez votre plainte",
+      title: "1. Signalez un cas",
       description: "Remplissez le formulaire de manière anonyme ou identifiée. Vos données sont cryptées et sécurisées."
     },
     step2: {
@@ -35,7 +35,7 @@ export const fr = {
     title: "Comment nous vous aidons",
     subtitle: "Une plateforme complète pour signaler, obtenir de l'aide et suivre votre dossier en toute sécurité.",
     feature1: {
-      title: "Dépôt de plainte anonyme",
+      title: "Signalement de cas anonyme",
       description: "Signalez en toute confidentialité sans révéler votre identité. Votre sécurité est notre priorité."
     },
     feature2: {
@@ -80,7 +80,8 @@ export const fr = {
 
   // Hero Section
   hero: {
-    subtitle: "Plateforme de signalement et de documentation des cas de violences sexuelles liées aux conflits et autres crimes graves. Anonyme, sécurisée et disponible 24h/24.",
+    subtitle: "Plateforme de signalement et de documentation des cas de violences sexuelles liées aux conflits et crimes contre la paix et la sécurité de l'humanité",
+    subtitleLine2: "Anonyme, sécurisé et disponible 24h/24",
     depositComplaint: "Signaler un cas",
     talkToAssistant: "Parler à l'assistant virtuel",
     trackComplaint: "Consulter un cas"

@@ -52,7 +52,7 @@ const violenceTypes = [
   "Mariage forcé",
   "Proxénétisme",
   "Attentat à la pudeur",
-  "Autres crimes graves"
+  "Crimes contre la paix et la sécurité de l'humanité"
 ]
 
 // TODO: Remplacer par des appels API réels via apiService.getComplaints()

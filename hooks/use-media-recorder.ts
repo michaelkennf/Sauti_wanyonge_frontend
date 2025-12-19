@@ -9,6 +9,7 @@ export interface MediaRecorderState {
   maxDuration: number
   mediaBlob: Blob | null
   error: string | null
+  stream: MediaStream | null // Exposer le stream pour le preview
 }
 
 export interface MediaRecorderOptions {
@@ -31,6 +32,7 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
     maxDuration,
     mediaBlob: null,
     error: null,
+    stream: null,
   })
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -81,6 +83,7 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
           mediaBlob: blob,
           isRecording: false,
           isPaused: false,
+          stream: null, // Nettoyer le stream après l'enregistrement
         }))
         
         // Nettoyer les références
@@ -95,6 +98,7 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
           ...prev,
           error: `Erreur d'enregistrement: ${event}`,
           isRecording: false,
+          stream: null,
         }))
       }
 
@@ -114,7 +118,8 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
         setState(prev => ({ ...prev, duration: elapsed }))
       }, 1000)
 
-      setState(prev => ({ ...prev, isRecording: true, duration: 0 }))
+      // Mettre à jour le state avec isRecording, stream et duration en une seule fois
+      setState(prev => ({ ...prev, isRecording: true, duration: 0, stream }))
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur lors du démarrage de l\'enregistrement'
@@ -135,6 +140,7 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
+      setState(prev => ({ ...prev, stream: null })) // Mettre à jour le state
     }
 
     // Nettoyer le timer
@@ -165,6 +171,7 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
       duration: 0,
       mediaBlob: null,
       error: null,
+      stream: null,
     }))
     chunksRef.current = []
   }, [stopRecording])

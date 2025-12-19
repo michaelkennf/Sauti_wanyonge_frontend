@@ -28,10 +28,15 @@ export function HeroSection() {
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight text-balance tracking-tight">
             Sauti ya wa nyonge
           </h1>
-
-          <p className="text-xl md:text-2xl text-white/95 leading-relaxed max-w-3xl mx-auto text-pretty font-light">
-            {t('hero.subtitle')}
+          
+          <p className="text-2xl md:text-3xl text-white/90 leading-relaxed max-w-3xl mx-auto text-pretty font-medium italic">
+            "La voix des victimes"
           </p>
+
+          <div className="text-xl md:text-2xl text-white/95 leading-relaxed max-w-3xl mx-auto text-pretty font-light space-y-2">
+            <p>{t('hero.subtitle')}</p>
+            <p>{t('hero.subtitleLine2')}</p>
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
             <div className="hover:scale-105 transition-transform duration-300">

@@ -23,7 +23,7 @@ export default function AboutPage() {
             >
               <h1 className="text-5xl md:text-6xl font-bold mb-6 text-balance">À propos de Sauti ya wa nyonge</h1>
               <p className="text-xl md:text-2xl leading-relaxed text-primary-foreground/90">
-                Sauti ya wa nyonge est une plateforme de signalement et de documentation des cas de violences sexuelles liées aux conflits et autres crimes graves en République démocratique du Congo. 
+                Sauti ya wa nyonge est une plateforme de signalement et de documentation des cas de violences sexuelles liées aux conflits et crimes contre la paix et la sécurité de l'humanité en République démocratique du Congo. 
                 Anonyme, sécurisée et disponible 24h/24, elle garantit confidentialité, sécurité et accès rapide aux services d'assistance.
               </p>
             </motion.div>
@@ -47,7 +47,7 @@ export default function AboutPage() {
                 </div>
                 <p className="text-lg text-muted-foreground leading-relaxed">
                   Offrir un guichet numérique confidentiel, anonyme et sécurisé pour que chaque victime ou témoin puisse
-                  signaler un cas, obtenir une première assistance et être orienté(e) vers des services adaptés pour les violences sexuelles liées aux conflits et autres crimes graves.
+                  signaler un cas, obtenir une première assistance et être orienté(e) vers des services adaptés pour les violences sexuelles liées aux conflits et crimes contre la paix et la sécurité de l'humanité.
                 </p>
               </motion.div>
 
@@ -66,7 +66,7 @@ export default function AboutPage() {
                 <ul className="space-y-3 text-lg text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-1">•</span>
-                    <span>Signalement de cas anonyme ou identifié (Viol, Harcèlement sexuel, Zoophilie, Mariage forcé, Proxénétisme, Attentat à la pudeur, Autres crimes graves)</span>
+                    <span>Signalement de cas anonyme ou identifié (Viol, Harcèlement sexuel, Zoophilie, Mariage forcé, Proxénétisme, Attentat à la pudeur, Crimes contre la paix et la sécurité de l'humanité)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-1">•</span>

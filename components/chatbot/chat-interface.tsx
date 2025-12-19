@@ -38,13 +38,23 @@ export function ChatInterface() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Scroll automatique vers le bas quand de nouveaux messages arrivent
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
-    }
-  }, [messages])
+    // Petit délai pour s'assurer que le DOM est mis à jour
+    const timer = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      } else if (scrollAreaRef.current) {
+        // Fallback: scroll manuel si messagesEndRef n'est pas disponible
+        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+      }
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [messages, isLoading])
 
   const handleSend = async (message?: string) => {
     const messageToSend = message || input.trim()
@@ -171,9 +181,9 @@ export function ChatInterface() {
 
   return (
     <Card className="max-w-4xl mx-auto border-border/50 shadow-lg overflow-hidden">
-      <div className="flex flex-col h-[600px]">
+      <div className="flex flex-col h-[70vh] max-h-[600px] min-h-[400px]">
         {/* Chat Messages */}
-        <ScrollArea className="flex-1 p-6" ref={scrollAreaRef}>
+        <div className="flex-1 overflow-y-auto p-6" ref={scrollAreaRef}>
           <div className="space-y-6">
             <AnimatePresence initial={false}>
               {messages.map((message) => (
@@ -198,7 +208,7 @@ export function ChatInterface() {
                           : "bg-secondary text-secondary-foreground"
                       }`}
                     >
-                      <p className="text-sm leading-relaxed whitespace-pre-line">{message.content}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-line break-words">{message.content}</p>
                     </div>
                     {message.resources && message.resources.length > 0 && (
                       <div className="space-y-2">
@@ -234,8 +244,10 @@ export function ChatInterface() {
                 </div>
               </motion.div>
             )}
+            {/* Point de référence pour le scroll automatique */}
+            <div ref={messagesEndRef} />
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Suggested Questions */}
         {messages.length <= 2 && (

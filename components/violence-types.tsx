@@ -9,43 +9,43 @@ const violenceTypes = [
     type: "Viol",
     image: "/african-woman-survivor-showing-strength-and-resili.jpg",
     description:
-      "Acte sexuel forcé sans consentement. Constitue un crime grave nécessitant une assistance médicale, juridique et psychologique immédiate.",
+      "Le fait pour une personne d'imposer à autrui un acte de pénétration sexuelle, de quelque nature qu'il soit, par violence, contrainte, menace ou surprise.",
   },
   {
     type: "Harcèlement sexuel",
     image: "/african-woman-in-workplace-standing-strong.jpg",
     description:
-      "Comportements non désirés à connotation sexuelle créant un environnement hostile ou intimidant au travail ou ailleurs.",
+      "Le harcèlement sexuel consiste en tout comportement, parole, geste ou pression à connotation sexuelle imposé à une personne, portant atteinte à sa dignité ou créant une situation intimidante, hostile ou offensante.",
   },
   {
     type: "Zoophilie",
     image: "/african-woman-looking-concerned-but-hopeful.jpg",
     description:
-      "Acte sexuel commis avec un animal. Crime grave nécessitant une intervention immédiate et un suivi spécialisé.",
+      "La zoophilie est qualifiée en droit pénal congolais comme un acte contre nature consistant à avoir des relations sexuelles avec un animal.",
   },
   {
     type: "Mariage forcé",
     image: "/young-african-woman-looking-thoughtful-and-strong.jpg",
     description:
-      "Union imposée sans le consentement libre et éclairé de l'une ou des deux parties. Violation des droits humains fondamentaux.",
+      "Le mariage forcé est le fait d'imposer à une personne une union matrimoniale sans son consentement libre et éclairé, notamment par la violence, la menace, la pression familiale ou sociale.",
   },
   {
     type: "Proxénétisme",
     image: "/african-woman-advocate-for-justice.jpg",
     description:
-      "Exploitation de la prostitution d'autrui. Crime grave nécessitant une protection immédiate et une assistance juridique.",
+      "Le proxénétisme désigne le fait de favoriser, tirer profit ou organiser la prostitution d'autrui, notamment par le recrutement, la contrainte, l'hébergement ou l'exploitation économique.",
   },
   {
     type: "Attentat à la pudeur",
     image: "/african-woman-survivor-with-hope-in-eyes.jpg",
     description:
-      "Actes d'exhibitionnisme ou d'attentat à la pudeur. Nécessite une intervention et un suivi appropriés.",
+      "L'attentat à la pudeur est tout acte à caractère sexuel commis sans pénétration, avec ou sans violence, sur une personne qui n'y a pas consenti ou qui est juridiquement incapable de consentir.",
   },
   {
-    type: "Autres crimes graves",
+    type: "Crimes contre la paix et la sécurité de l'humanité",
     image: "/african-woman-showing-inner-strength.jpg",
     description:
-      "Tous les autres crimes graves liés aux violences sexuelles et basées sur le genre. Chaque cas est pris en charge avec le sérieux qu'il mérite.",
+      "Crimes contre la paix et la sécurité de l'humanité : Crime de génocide, Crimes contre l'humanité, Crimes de guerre.",
   },
 ]
 
@@ -155,7 +155,7 @@ export function ViolenceTypes() {
                   className="relative w-full h-full cursor-pointer"
                   style={{ transformStyle: "preserve-3d" }}
                 >
-                  {/* Front of card - Description en haut, nom en bas */}
+                  {/* Front of card - Type en haut (titre), description en bas */}
                   <div
                     className={`absolute inset-0 p-6 rounded-lg border transition-all duration-300 flex flex-col justify-between ${
                       selectedIndex === index
@@ -166,20 +166,20 @@ export function ViolenceTypes() {
                   >
                     <div className="flex-1 flex items-start">
                       <p
+                        className={`text-center font-semibold text-lg transition-colors w-full ${
+                          selectedIndex === index ? "text-primary-foreground" : "text-foreground group-hover:text-primary"
+                        }`}
+                      >
+                        {item.type}
+                      </p>
+                    </div>
+                    <div className="mt-auto">
+                      <p
                         className={`text-sm text-center leading-relaxed ${
                           selectedIndex === index ? "text-primary-foreground/90" : "text-muted-foreground"
                         }`}
                       >
                         {item.description}
-                      </p>
-                    </div>
-                    <div className="mt-auto">
-                      <p
-                        className={`text-center font-semibold text-lg transition-colors ${
-                          selectedIndex === index ? "text-primary-foreground" : "text-foreground group-hover:text-primary"
-                        }`}
-                      >
-                        {item.type}
                       </p>
                     </div>
                   </div>

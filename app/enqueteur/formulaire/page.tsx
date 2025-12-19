@@ -314,11 +314,11 @@ export default function InvestigatorFormPage() {
 
 
   const steps = [
-    { id: 1, title: "Identité du bénéficiaire", icon: User },
-    { id: 2, title: "Informations de l'incident", icon: AlertCircle },
-    { id: 3, title: "Documentation des évidences", icon: Camera },
-    { id: 4, title: "Commentaire enquêteur", icon: FileText },
-    { id: 5, title: "Validation finale", icon: Shield }
+    { id: 1, title: "Identité du bénéficiaire", icon: User, color: "bg-blue-500" },
+    { id: 2, title: "Informations de l'incident", icon: AlertCircle, color: "bg-red-500" },
+    { id: 3, title: "Documentation des évidences", icon: Camera, color: "bg-purple-500" },
+    { id: 4, title: "Commentaire enquêteur", icon: FileText, color: "bg-green-500" },
+    { id: 5, title: "Validation finale", icon: Shield, color: "bg-orange-500" }
   ]
 
   // Fonctions pour la gestion des fichiers
@@ -781,17 +781,17 @@ export default function InvestigatorFormPage() {
     setOtherStatusDetails("")
   }
 
-  // Gestion du dialogue "Autres crimes graves" pour la nature des faits
+  // Gestion du dialogue "Crimes contre la paix et la sécurité de l'humanité" pour la nature des faits
   const handleOtherCrimesConfirm = () => {
     if (!otherCrimesDetails.trim()) {
       toast({
         title: "Champ requis",
-        description: "Veuillez préciser de quel type de crime grave il s'agit.",
+        description: "Veuillez préciser de quel type de crime il s'agit.",
         variant: "destructive"
       })
       return
     }
-    const natureValue = `Autres crimes graves: ${otherCrimesDetails}`
+    const natureValue = `Crimes contre la paix et la sécurité de l'humanité: ${otherCrimesDetails}`
     setFormData(prev => ({ 
       ...prev, 
       beneficiaryNatureOfFacts: natureValue,
@@ -958,7 +958,7 @@ export default function InvestigatorFormPage() {
             <Select 
               value={formData.beneficiaryNatureOfFacts} 
               onValueChange={(value) => {
-                if (value === "Autres crimes graves") {
+                if (value === "Crimes contre la paix et la sécurité de l'humanité") {
                   setShowOtherCrimesDialog(true)
                 } else {
                   setFormData(prev => ({ ...prev, beneficiaryNatureOfFacts: value }))
@@ -975,7 +975,7 @@ export default function InvestigatorFormPage() {
                 <SelectItem value="Mariage forcé">Mariage forcé</SelectItem>
                 <SelectItem value="Proxénétisme">Proxénétisme</SelectItem>
                 <SelectItem value="Attentat à la pudeur">Attentat à la pudeur</SelectItem>
-                <SelectItem value="Autres crimes graves">Autres crimes graves</SelectItem>
+                <SelectItem value="Crimes contre la paix et la sécurité de l'humanité">Crimes contre la paix et la sécurité de l'humanité</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -992,7 +992,11 @@ export default function InvestigatorFormPage() {
           <Select 
             value={formData.incidentType} 
             onValueChange={(value) => {
-              setFormData(prev => ({ ...prev, incidentType: value }))
+              if (value === "Crimes contre la paix et la sécurité de l'humanité") {
+                setShowOtherCrimesDialog(true)
+              } else {
+                setFormData(prev => ({ ...prev, incidentType: value }))
+              }
             }}
           >
             <SelectTrigger>
@@ -1005,7 +1009,7 @@ export default function InvestigatorFormPage() {
               <SelectItem value="Mariage forcé">Mariage forcé</SelectItem>
               <SelectItem value="Proxénétisme">Proxénétisme</SelectItem>
               <SelectItem value="Attentat à la pudeur">Attentat à la pudeur</SelectItem>
-              <SelectItem value="Autres crimes graves">Autres crimes graves</SelectItem>
+              <SelectItem value="Crimes contre la paix et la sécurité de l'humanité">Crimes contre la paix et la sécurité de l'humanité</SelectItem>
             </SelectContent>
           </Select>
           {formData.beneficiaryNatureOfFacts && formData.incidentType === formData.beneficiaryNatureOfFacts && (
@@ -1616,8 +1620,10 @@ export default function InvestigatorFormPage() {
                         : 'border-border bg-muted/30'
                     }`}
                   >
-                    <div className={`p-3 rounded-full mb-2 ${
-                      currentStep >= step.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                    <div className={`p-3 rounded-full mb-2 text-white transition-all ${
+                      currentStep >= step.id 
+                        ? `${step.color} shadow-lg scale-110` 
+                        : `${step.color} opacity-50`
                     }`}>
                       <step.icon className="h-5 w-5" />
                     </div>
@@ -1744,28 +1750,31 @@ export default function InvestigatorFormPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog pour "Autres crimes graves" */}
+      {/* Dialog pour "Crimes contre la paix et la sécurité de l'humanité" */}
       <Dialog open={showOtherCrimesDialog} onOpenChange={setShowOtherCrimesDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Préciser le type de crime grave</DialogTitle>
+            <DialogTitle>Préciser le type de crime</DialogTitle>
             <DialogDescription>
-              Veuillez décrire de quel type de crime grave il s'agit.
+              Veuillez préciser de quel type de crime contre la paix et la sécurité de l'humanité il s'agit.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="otherCrimesDetails">
-                Détails du crime <span className="text-destructive">*</span>
+                Type de crime <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="otherCrimesDetails"
-                placeholder="Ex: Traite des personnes, Torture, Assassinat, etc."
+                placeholder="Exemples: Crime de génocide, Crimes contre l'humanité, Crimes de guerre"
                 value={otherCrimesDetails}
                 onChange={(e) => setOtherCrimesDetails(e.target.value)}
                 rows={4}
                 className="resize-none"
               />
+              <p className="text-xs text-muted-foreground mt-2">
+                Crimes contre la paix et la sécurité de l'humanité : Crime de génocide, Crimes contre l'humanité, Crimes de guerre
+              </p>
             </div>
           </div>
           <DialogFooter>

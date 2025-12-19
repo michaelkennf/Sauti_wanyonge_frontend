@@ -9,6 +9,7 @@ import { useState, useEffect } from "react"
 import type { ComplaintData } from "@/app/plainte/page"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { apiService } from "@/lib/api"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
@@ -35,6 +36,51 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
       setError(null)
 
       try {
+        // Récupérer le token CSRF avec credentials pour obtenir le cookie
+        let csrfToken = ''
+        try {
+          const baseUrl = API_URL.replace('/api', '')
+          const csrfResponse = await fetch(`${baseUrl}/api/csrf-token`, {
+            method: 'GET',
+            credentials: 'include', // Important : inclure les cookies
+          })
+          
+          if (csrfResponse.ok) {
+            const csrfData = await csrfResponse.json()
+            csrfToken = csrfData.data?.csrfToken || csrfData.csrfToken || ''
+            
+            // Si le token n'est pas dans la réponse JSON, essayer de le récupérer depuis le cookie
+            if (!csrfToken && typeof document !== 'undefined') {
+              const cookies = document.cookie.split(';')
+              const csrfCookie = cookies.find(c => c.trim().startsWith('csrf_token='))
+              if (csrfCookie) {
+                csrfToken = csrfCookie.split('=')[1]?.trim() || ''
+              }
+            }
+            
+            // Si toujours pas de token, essayer depuis le header de réponse
+            if (!csrfToken) {
+              csrfToken = csrfResponse.headers.get('X-CSRF-Token') || ''
+            }
+          } else {
+            console.warn('Erreur lors de la récupération du token CSRF:', csrfResponse.status, csrfResponse.statusText)
+          }
+        } catch (csrfError) {
+          console.error('Impossible de récupérer le token CSRF:', csrfError)
+          // Essayer de récupérer depuis le cookie directement
+          if (typeof document !== 'undefined') {
+            const cookies = document.cookie.split(';')
+            const csrfCookie = cookies.find(c => c.trim().startsWith('csrf_token='))
+            if (csrfCookie) {
+              csrfToken = csrfCookie.split('=')[1]?.trim() || ''
+            }
+          }
+        }
+        
+        if (!csrfToken) {
+          console.error('⚠️ Token CSRF non disponible - la requête peut échouer')
+        }
+
         // Obtenir la géolocalisation
         let latitude = 0
         let longitude = 0
@@ -53,6 +99,81 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
             // Utiliser des coordonnées par défaut pour Kinshasa
             latitude = -4.3276
             longitude = 15.3136
+          }
+        }
+
+        // Uploader les fichiers audio/vidéo/images si présents
+        let uploadedEvidence: Array<{
+          type: string
+          fileName: string
+          filePath: string
+          fileSize: number
+          mimeType: string
+          isRequired: boolean
+        }> = []
+
+        if (data.evidence && Array.isArray(data.evidence) && data.evidence.length > 0) {
+          try {
+            // Convertir les Blobs en Files si nécessaire
+            const filesToUpload = data.evidence.map((file: File | Blob) => {
+              if (file instanceof File) {
+                return file
+              }
+              // Convertir Blob en File
+              const fileName = file.type.startsWith('audio/') 
+                ? `audio_${Date.now()}.webm`
+                : file.type.startsWith('video/')
+                ? `video_${Date.now()}.webm`
+                : `file_${Date.now()}.${file.type.split('/')[1] || 'bin'}`
+              return new File([file], fileName, { type: file.type })
+            })
+
+            // Uploader les fichiers (route publique pour les plaintes anonymes)
+            // Utiliser directement fetch car apiService.uploadFiles nécessite une authentification
+            const formData = new FormData()
+            filesToUpload.forEach(file => {
+              formData.append('files', file)
+            })
+
+            // Utiliser l'URL de base sans /api pour construire l'URL complète
+            const baseUrl = API_URL.replace('/api', '')
+            const uploadResponse = await fetch(`${baseUrl}/api/uploads/public`, {
+              method: 'POST',
+              body: formData,
+              // Ne pas définir Content-Type, laisser le navigateur le faire pour FormData
+            })
+
+            if (!uploadResponse.ok) {
+              throw new Error('Erreur lors de l\'upload des fichiers')
+            }
+
+            const uploadResult = await uploadResponse.json()
+            const uploadedFiles = uploadResult.files || []
+
+            // Mapper les fichiers uploadés en format evidence
+            uploadedEvidence = uploadedFiles.map((uploadedFile, index) => {
+              const originalFile = filesToUpload[index]
+              let evidenceType = 'PHOTO'
+              if (originalFile.type.startsWith('audio/')) {
+                evidenceType = 'AUDIO'
+              } else if (originalFile.type.startsWith('video/')) {
+                evidenceType = 'VIDEO'
+              } else if (originalFile.type === 'application/pdf') {
+                evidenceType = 'IDENTITY_DOCUMENT'
+              }
+
+              return {
+                type: evidenceType,
+                fileName: uploadedFile.fileName,
+                filePath: uploadedFile.filePath,
+                fileSize: uploadedFile.size,
+                mimeType: uploadedFile.mimeType,
+                isRequired: false
+              }
+            })
+          } catch (uploadError) {
+            console.error('Erreur lors de l\'upload des fichiers:', uploadError)
+            // Continuer sans les fichiers si l'upload échoue
           }
         }
 
@@ -77,23 +198,59 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
             latitude,
             longitude
           },
-          evidence: [],
+          evidence: uploadedEvidence,
           services: data.needs || []
         }
 
         // Envoyer la plainte au backend
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        }
+        
+        // Ajouter le token CSRF si disponible
+        if (csrfToken) {
+          headers['X-CSRF-Token'] = csrfToken
+        }
+
+        console.log('📤 Envoi de la plainte:', {
+          url: `${API_URL}/complaints/victim`,
+          hasCSRFToken: !!csrfToken,
+          payload: complaintPayload
+        })
+
         const response = await fetch(`${API_URL}/complaints/victim`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
+          credentials: 'include', // Inclure les cookies (pour le CSRF token)
           body: JSON.stringify(complaintPayload)
         })
 
-        const result = await response.json()
+        // Vérifier le type de contenu avant de parser JSON
+        const contentType = response.headers.get('content-type')
+        let result: any
+        
+        if (contentType && contentType.includes('application/json')) {
+          result = await response.json()
+        } else {
+          const text = await response.text()
+          console.error('❌ Réponse non-JSON du serveur:', text)
+          throw new Error(`Erreur serveur: ${response.status} ${response.statusText}`)
+        }
+
+        console.log('📥 Réponse du serveur:', {
+          ok: response.ok,
+          status: response.status,
+          result
+        })
 
         if (!response.ok) {
-          throw new Error(result.message || result.error || 'Erreur lors de la soumission du cas')
+          console.error('❌ Erreur HTTP:', {
+            status: response.status,
+            statusText: response.statusText,
+            message: result.message || result.error,
+            result
+          })
+          throw new Error(result.message || result.error || `Erreur ${response.status}: ${response.statusText}`)
         }
 
         if (result.success && result.data?.trackingCode) {

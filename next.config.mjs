@@ -39,6 +39,14 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
+    // Désactiver outputFileTracing pour éviter les erreurs EINVAL sur OneDrive/Windows
+    outputFileTracingExcludes: {
+      '*': [
+        'node_modules/@swc',
+        'node_modules/webpack',
+        'node_modules/.cache',
+      ],
+    },
   },
   
   // Désactiver les liens symboliques pour éviter les problèmes OneDrive sur Windows
@@ -48,19 +56,24 @@ const nextConfig = {
   // Headers de sécurité et performance
   async headers() {
     // CSP strict pour la protection XSS
+    // En développement, autoriser localhost pour l'API backend
+    const isDev = process.env.NODE_ENV === 'development'
+    const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+    
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval nécessaire pour Next.js en dev
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://api.openai.com", // Pour OpenAI API
+      `connect-src 'self' ${apiUrl} http://localhost:3001 https://api.openai.com https://va.vercel-scripts.com`, // API backend + OpenAI + Vercel Analytics
+      "media-src 'self' blob: data:", // Pour les enregistrements audio/vidéo
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
       "frame-src 'none'",
       "object-src 'none'",
-      "upgrade-insecure-requests",
+      ...(isDev ? [] : ["upgrade-insecure-requests"]), // Désactiver en dev pour localhost
     ].join('; ')
 
     return [
@@ -93,7 +106,7 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'geolocation=(), microphone=(), camera=()'
+            value: 'geolocation=(self), microphone=(self), camera=(self)'
           },
         ],
       },

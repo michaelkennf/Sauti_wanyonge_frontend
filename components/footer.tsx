@@ -8,21 +8,7 @@ export function Footer() {
   return (
     <footer className="bg-primary text-primary-foreground">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* About Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="relative h-16 w-16">
-                <Image src="/logo-sauti-ya-wayonge.png" alt="Sauti ya wa nyonge Logo" fill className="object-contain" />
-              </div>
-              <h3 className="text-xl font-semibold">Sauti ya wa nyonge</h3>
-            </div>
-            <p className="text-sm text-primary-foreground/80 leading-relaxed">
-              Plateforme nationale de signalement et d'assistance aux victimes de violences sexuelles et basées sur le
-              genre en RDC.
-            </p>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Quick Links */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Liens rapides</h3>
