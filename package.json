@@ -6,6 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "dev:clean": "npm run clean:win && next dev",
+    "dev:reset": "npm run clean:win && npm cache clean --force && next dev",
     "lint": "next lint",
     "start": "next start -p 5023",
     "start:pm2": "pm2 start ecosystem.config.js",

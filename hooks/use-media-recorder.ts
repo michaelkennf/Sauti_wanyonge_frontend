@@ -40,34 +40,70 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
   const chunksRef = useRef<Blob[]>([])
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number>(0)
+  const stopRecordingRef = useRef<(() => void) | null>(null)
 
   const startRecording = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, error: null }))
 
       // Obtenir les permissions média
+      // Logique simplifiée :
+      // - audioOnly: true → seulement audio (video: false, audio: true)
+      // - videoOnly: true → seulement vidéo sans audio (video: true, audio: false) - rare
+      // - videoOnly: false et audioOnly: false → audio + vidéo (video: true, audio: true) - cas normal pour vidéo
+      const wantsAudio = audioOnly || (!videoOnly && !audioOnly)
+      const wantsVideo = !audioOnly
+      
       const constraints: MediaStreamConstraints = {
-        audio: !videoOnly,
-        video: !audioOnly ? {
+        audio: wantsAudio,
+        video: wantsVideo ? {
           width: { ideal: 1280 },
           height: { ideal: 720 },
           facingMode: 'user',
         } : false,
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      console.log('📹 Demande d\'accès aux médias:', {
+        audioOnly,
+        videoOnly,
+        wantsAudio,
+        wantsVideo,
+        constraints: JSON.stringify(constraints)
+      })
+      
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints)
+        console.log('✅ Stream obtenu avec succès')
+      } catch (mediaError: any) {
+        console.error('❌ Erreur getUserMedia:', {
+          name: mediaError?.name,
+          message: mediaError?.message,
+          constraint: mediaError?.constraint,
+          error: mediaError
+        })
+        throw mediaError
+      }
+      console.log('✅ Stream obtenu:', { 
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: stream.getAudioTracks().length,
+        active: stream.active
+      })
       streamRef.current = stream
 
       // Créer le MediaRecorder
       const mimeType = getSupportedMimeType()
+      console.log('🎥 Création du MediaRecorder avec mimeType:', mimeType)
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType,
-        videoBitsPerSecond: videoOnly ? 2500000 : undefined, // 2.5 Mbps pour la vidéo
-        audioBitsPerSecond: audioOnly ? 128000 : undefined, // 128 kbps pour l'audio
+        // Bitrate optimisé : qualité excellente avec taille réduite
+        videoBitsPerSecond: videoOnly ? 1800000 : undefined, // 1.8 Mbps pour la vidéo (excellente qualité 720p)
+        audioBitsPerSecond: audioOnly ? 96000 : undefined, // 96 kbps pour l'audio (qualité très bonne, transparente pour la voix)
       })
 
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
+      console.log('✅ MediaRecorder créé:', { state: mediaRecorder.state })
 
       // Gérer les événements
       mediaRecorder.ondataavailable = (event) => {
@@ -78,6 +114,13 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeType })
+        
+        // Arrêter le stream APRÈS avoir créé le blob
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop())
+          streamRef.current = null
+        }
+        
         setState(prev => ({
           ...prev,
           mediaBlob: blob,
@@ -103,44 +146,108 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
       }
 
       // Démarrer l'enregistrement
+      console.log('▶️ Démarrage du MediaRecorder...')
       mediaRecorder.start(1000) // Collecter les données toutes les secondes
       startTimeRef.current = Date.now()
+      console.log('✅ MediaRecorder démarré:', { state: mediaRecorder.state })
 
-      // Démarrer le timer
+      // Mettre à jour le state avec isRecording, stream et duration en une seule fois
+      // IMPORTANT: Créer un nouvel objet pour forcer React à détecter le changement
+      const newState = {
+        isRecording: true,
+        isPaused: false,
+        duration: 0,
+        maxDuration,
+        mediaBlob: null,
+        error: null,
+        stream: stream, // Le stream doit être dans le state pour le preview
+      }
+      console.log('📊 Mise à jour du state avec nouvel objet:', { 
+        isRecording: newState.isRecording, 
+        duration: newState.duration, 
+        hasStream: !!newState.stream,
+        streamId: newState.stream?.id
+      })
+      setState(newState)
+
+      // Démarrer le timer APRÈS avoir mis à jour le state
+      // Utiliser une fonction locale pour éviter les problèmes de closure
       durationIntervalRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
         
         if (elapsed >= maxDuration) {
-          stopRecording()
+          // Arrêter le MediaRecorder directement pour éviter les problèmes de closure
+          if (mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused')) {
+            try {
+              mediaRecorderRef.current.stop()
+            } catch (error) {
+              console.error('Erreur lors de l\'arrêt automatique:', error)
+            }
+          }
+          // Nettoyer le timer
+          if (durationIntervalRef.current) {
+            clearInterval(durationIntervalRef.current)
+            durationIntervalRef.current = null
+          }
           return
         }
 
-        setState(prev => ({ ...prev, duration: elapsed }))
+        // Toujours mettre à jour pour que React détecte le changement
+        setState(prev => {
+          // Forcer la mise à jour même si la valeur est la même pour le premier tick
+          if (prev.duration !== elapsed || elapsed === 0) {
+            console.log('⏱️ Mise à jour durée:', elapsed)
+            return { ...prev, duration: elapsed }
+          }
+          return prev
+        })
       }, 1000)
-
-      // Mettre à jour le state avec isRecording, stream et duration en une seule fois
-      setState(prev => ({ ...prev, isRecording: true, duration: 0, stream }))
+      
+      console.log('⏱️ Timer démarré pour la durée, interval ID:', durationIntervalRef.current)
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur lors du démarrage de l\'enregistrement'
+      console.error('❌ Erreur dans startRecording:', error)
       setState(prev => ({
         ...prev,
         error: errorMessage,
         isRecording: false,
+        stream: null,
       }))
+      // Réinitialiser les refs en cas d'erreur
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current)
+        durationIntervalRef.current = null
+      }
     }
   }, [maxDuration, audioOnly, videoOnly])
 
   const stopRecording = useCallback(() => {
+    // Arrêter le MediaRecorder - le stream sera arrêté dans onstop après création du blob
     if (mediaRecorderRef.current && state.isRecording) {
-      mediaRecorderRef.current.stop()
-    }
-
-    // Arrêter le stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
-      setState(prev => ({ ...prev, stream: null })) // Mettre à jour le state
+      try {
+        // Vérifier que le MediaRecorder est dans un état valide
+        if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
+          mediaRecorderRef.current.stop()
+        }
+      } catch (error) {
+        console.error('Erreur lors de l\'arrêt de l\'enregistrement:', error)
+        // Forcer l'arrêt du stream en cas d'erreur
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop())
+          streamRef.current = null
+        }
+        setState(prev => ({
+          ...prev,
+          isRecording: false,
+          stream: null,
+          error: error instanceof Error ? error.message : 'Erreur lors de l\'arrêt de l\'enregistrement'
+        }))
+      }
     }
 
     // Nettoyer le timer
@@ -148,6 +255,9 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
       clearInterval(durationIntervalRef.current)
       durationIntervalRef.current = null
     }
+    
+    // Note: Le stream sera arrêté dans onstop après création du blob
+    // pour éviter les problèmes de race condition
   }, [state.isRecording])
 
   const pauseRecording = useCallback(() => {
@@ -224,6 +334,9 @@ export function useMediaRecorder(options: MediaRecorderOptions = {}) {
       clearInterval(durationIntervalRef.current)
     }
   }, [stopRecording])
+
+  // Mettre à jour la ref de stopRecording pour qu'elle soit accessible dans le timer
+  stopRecordingRef.current = stopRecording
 
   return {
     ...state,

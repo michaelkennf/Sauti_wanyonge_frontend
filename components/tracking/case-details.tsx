@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, MapPin, FileText, MessageSquare } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 type CaseDetailsProps = {
   data: {
@@ -20,6 +21,12 @@ type CaseDetailsProps = {
 }
 
 export function CaseDetails({ data }: CaseDetailsProps) {
+  const router = useRouter()
+
+  const handleContactAgent = () => {
+    router.push(`/contacter-agent?code=${data.code}`)
+  }
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "reçue":
@@ -102,7 +109,10 @@ export function CaseDetails({ data }: CaseDetailsProps) {
         )}
 
         <div className="flex gap-3 pt-4">
-          <Button className="flex-1 gap-2">
+          <Button 
+            onClick={handleContactAgent}
+            className="flex-1 gap-2"
+          >
             <MessageSquare className="h-4 w-4" />
             Contacter un agent
           </Button>

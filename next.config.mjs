@@ -39,17 +39,17 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
-    // Désactiver outputFileTracing pour éviter les erreurs EINVAL sur OneDrive/Windows
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/@swc',
-        'node_modules/webpack',
-        'node_modules/.cache',
-      ],
-    },
   },
   
-  // Désactiver les liens symboliques pour éviter les problèmes OneDrive sur Windows
+  // Désactiver outputFileTracing pour éviter les erreurs EINVAL sur OneDrive/Windows
+  // Note: Dans Next.js 15, outputFileTracingExcludes est au niveau racine, pas dans experimental
+  outputFileTracingExcludes: {
+    '*': [
+      'node_modules/@swc',
+      'node_modules/webpack',
+      'node_modules/.cache',
+    ],
+  },
   outputFileTracingIncludes: {},
   // Compression
   compress: true,
@@ -62,7 +62,7 @@ const nextConfig = {
     
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval nécessaire pour Next.js en dev
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com", // Autoriser Vercel Analytics
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https: blob:",
@@ -140,6 +140,11 @@ const nextConfig = {
     }
     config.resolve.symlinks = false
     
+    // Améliorer la résolution des modules pour éviter les erreurs
+    if (!config.resolve.fallback) {
+      config.resolve.fallback = {}
+    }
+    
     if (dev) {
       config.watchOptions = {
         ...config.watchOptions,
@@ -155,49 +160,11 @@ const nextConfig = {
       }
     }
     
-    // Optimiser les chunks - Configuration avancée pour haute performance
-    if (!isServer) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          minSize: 20000, // 20KB minimum
-          maxSize: 244000, // 244KB maximum (pour HTTP/2)
-          cacheGroups: {
-            default: {
-              minChunks: 2,
-              priority: -20,
-              reuseExistingChunk: true,
-            },
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              priority: -10,
-              reuseExistingChunk: true,
-              chunks: 'all',
-            },
-            // Séparer les grandes librairies
-            react: {
-              test: /[\\/]node_modules[\\/](react|react-dom|react-router)[\\/]/,
-              name: 'react',
-              priority: 20,
-              chunks: 'all',
-            },
-            ui: {
-              test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
-              name: 'ui',
-              priority: 15,
-              chunks: 'all',
-            },
-            charts: {
-              test: /[\\/]node_modules[\\/](recharts|chart\.js)[\\/]/,
-              name: 'charts',
-              priority: 10,
-              chunks: 'all',
-            },
-          },
-        },
-      }
+    // Configuration simplifiée pour éviter les erreurs avec Next.js 15
+    // Ne pas surcharger la configuration d'optimisation par défaut de Next.js
+    if (!isServer && dev) {
+      // En développement, garder la configuration par défaut de Next.js
+      // qui est optimisée pour le hot-reload
     }
     
     return config

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,26 +15,34 @@ import { motion } from "framer-motion"
 import { logger } from "@/lib/logger"
 import { apiService } from "@/lib/api"
 
-export default function SuiviPage() {
+function SuiviPageContent() {
+  const searchParams = useSearchParams()
   const [code, setCode] = useState("")
   const [caseData, setCaseData] = useState<any>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState("")
-  const [savedCodes, setSavedCodes] = useState<Array<{code: string, date: string, status: string}>>([])
 
-  // Charger les codes sauvegardés au montage
+  // Nettoyer l'historique des codes précédents pour garantir la confidentialité
+  // Chaque utilisateur ne doit voir que son propre cas, pas l'historique des autres
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('anonymous_complaint_codes')
-        if (saved) {
-          setSavedCodes(JSON.parse(saved))
-        }
+        // Supprimer l'historique des codes précédents pour la confidentialité
+        localStorage.removeItem('anonymous_complaint_codes')
       } catch (e) {
-        logger.warn('Impossible de charger les codes sauvegardés', e, 'SuiviPage')
+        logger.warn('Impossible de nettoyer l\'historique', e, 'SuiviPage')
       }
     }
   }, [])
+
+  // Charger le code depuis l'URL si présent (lien direct depuis step-3)
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('code')
+    if (codeFromUrl) {
+      setCode(codeFromUrl.toUpperCase())
+      // Ne pas rechercher automatiquement, laisser l'utilisateur cliquer
+    }
+  }, [searchParams])
 
   const handleSearch = async () => {
     setError("")
@@ -198,35 +207,10 @@ export default function SuiviPage() {
                       </Button>
                     </div>
                     {error && <p className="text-sm text-destructive">{error}</p>}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      🔒 Votre code de suivi est confidentiel. Aucun historique n'est conservé pour garantir votre confidentialité.
+                    </p>
                   </div>
-                  
-                  {/* Afficher les codes sauvegardés */}
-                  {savedCodes.length > 0 && (
-                    <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                        📋 Vos cas précédents :
-                      </p>
-                      <div className="space-y-2">
-                        {savedCodes.map((item, index) => (
-                          <button
-                            key={index}
-                            onClick={() => {
-                              setCode(item.code)
-                              handleSearch()
-                            }}
-                            className="w-full text-left p-2 bg-white dark:bg-gray-800 rounded border border-blue-200 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-mono text-sm font-medium">{item.code}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(item.date).toLocaleDateString('fr-FR')}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -248,5 +232,24 @@ export default function SuiviPage() {
       </main>
       <Footer />
     </div>
+  )
+}
+
+export default function SuiviPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 bg-secondary/20 flex items-center justify-center">
+          <div className="text-center">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Chargement...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <SuiviPageContent />
+    </Suspense>
   )
 }

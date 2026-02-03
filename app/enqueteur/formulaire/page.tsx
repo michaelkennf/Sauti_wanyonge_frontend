@@ -324,26 +324,36 @@ export default function InvestigatorFormPage() {
   ]
 
   // Fonctions pour la gestion des fichiers
-  const handleFileUpload = (file: File, type: 'photo' | 'document') => {
+  const handleFileUpload = async (file: File, type: 'photo' | 'document') => {
+    // Compresser le fichier avant de l'ajouter
+    let finalFile = file
+    try {
+      const { compressMediaFile } = await import('@/lib/media-compression')
+      finalFile = await compressMediaFile(file)
+    } catch (error) {
+      console.error('Erreur lors de la compression:', error)
+      // Continuer avec le fichier original en cas d'erreur
+    }
+    
     const newFile: EvidenceFile = {
       id: Date.now().toString(),
       type,
-      file,
-      name: file.name,
-      size: file.size,
-      mimeType: file.type,
-      preview: type === 'photo' ? URL.createObjectURL(file) : undefined
+      file: finalFile,
+      name: finalFile.name,
+      size: finalFile.size,
+      mimeType: finalFile.type,
+      preview: type === 'photo' ? URL.createObjectURL(finalFile) : undefined
     }
     
     setEvidenceFiles(prev => [...prev, newFile])
     
     if (type === 'photo') {
-      setFormData(prev => ({ ...prev, beneficiaryPhoto: file }))
+      setFormData(prev => ({ ...prev, beneficiaryPhoto: finalFile }))
     }
     
     toast({
       title: "Fichier ajouté",
-      description: `${file.name} a été ajouté avec succès`,
+      description: `${finalFile.name} a été compressé et ajouté avec succès`,
     })
   }
 
@@ -435,37 +445,77 @@ export default function InvestigatorFormPage() {
         }
       }
       
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const blob = new Blob(chunks, { 
           type: type === 'audio' ? 'audio/webm' : 'video/webm' 
         })
         
-        const newFile: EvidenceFile = {
-          id: Date.now().toString(),
-          type,
-          file: blob,
-          name: `${type}_${Date.now()}.webm`,
-          size: blob.size,
-          mimeType: blob.type
-        }
-        
-        setEvidenceFiles(prev => [...prev, newFile])
-        
-        if (type === 'audio') {
-          setFormData(prev => ({ ...prev, beneficiaryAudio: blob }))
-        } else {
-          setFormData(prev => ({ ...prev, beneficiaryVideo: blob }))
+        try {
+          // Compresser l'enregistrement
+          toast({
+            title: "Compression en cours...",
+            description: `Compression de l'enregistrement ${type === 'audio' ? 'audio' : 'vidéo'}...`,
+          })
+          
+          const tempFile = new File([blob], `${type}_${Date.now()}.webm`, {
+            type: blob.type
+          })
+          
+          const { compressMediaFile } = await import('@/lib/media-compression')
+          const compressedFile = await compressMediaFile(tempFile)
+          
+          const newFile: EvidenceFile = {
+            id: Date.now().toString(),
+            type,
+            file: compressedFile,
+            name: compressedFile.name,
+            size: compressedFile.size,
+            mimeType: compressedFile.type
+          }
+          
+          setEvidenceFiles(prev => [...prev, newFile])
+          
+          if (type === 'audio') {
+            setFormData(prev => ({ ...prev, beneficiaryAudio: compressedFile }))
+          } else {
+            setFormData(prev => ({ ...prev, beneficiaryVideo: compressedFile }))
+          }
+          
+          toast({
+            title: "Enregistrement terminé",
+            description: `${type === 'audio' ? 'Audio' : 'Vidéo'} compressé et enregistré avec succès (${recordingTime}s)`,
+          })
+        } catch (error) {
+          console.error('Erreur lors de la compression:', error)
+          // En cas d'erreur, utiliser le fichier original
+          const newFile: EvidenceFile = {
+            id: Date.now().toString(),
+            type,
+            file: blob,
+            name: `${type}_${Date.now()}.webm`,
+            size: blob.size,
+            mimeType: blob.type
+          }
+          
+          setEvidenceFiles(prev => [...prev, newFile])
+          
+          if (type === 'audio') {
+            setFormData(prev => ({ ...prev, beneficiaryAudio: blob }))
+          } else {
+            setFormData(prev => ({ ...prev, beneficiaryVideo: blob }))
+          }
+          
+          toast({
+            title: "Enregistrement terminé",
+            description: `${type === 'audio' ? 'Audio' : 'Vidéo'} enregistré avec succès (compression échouée) (${recordingTime}s)`,
+            variant: "warning"
+          })
         }
         
         // Nettoyer les ressources
         stream.getTracks().forEach(track => track.stop())
         setMediaRecorder(null)
         setRecordingStream(null)
-        
-        toast({
-          title: "Enregistrement terminé",
-          description: `${type === 'audio' ? 'Audio' : 'Vidéo'} enregistré avec succès (${recordingTime}s)`,
-        })
       }
       
       recorder.onerror = (event) => {

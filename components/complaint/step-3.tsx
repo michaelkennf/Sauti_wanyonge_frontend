@@ -11,7 +11,24 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/lib/api"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+// Définir les URLs de l'API de manière sécurisée
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+  }
+  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+}
+
+const getApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+}
+
+// Constantes pour utilisation dans le composant
+const API_BASE_URL = getApiBaseUrl()
+const API_URL = getApiUrl()
 
 type Step3Props = {
   data: Partial<ComplaintData>
@@ -180,6 +197,8 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
         const complaintPayload = {
           type: 'VICTIM_DIRECT' as const,
           priority: 'MEDIUM' as const,
+          reportingMode: data.isAnonymous ? 'ANONYMOUS' as const : 'CONTACT' as const,
+          violenceType: data.incidentType || null, // Type de violence
           beneficiaryData: {
             name: data.isAnonymous ? 'Anonyme' : (data.name || 'Non spécifié'),
             sex: 'OTHER' as const,
@@ -192,9 +211,14 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
             status: 'Victime',
             natureOfFacts: data.incidentType || data.description || 'Non spécifié'
           },
+          contactData: data.isAnonymous ? undefined : {
+            phone: data.phone || undefined,
+            email: data.email || undefined
+          },
           geolocation: {
             latitude,
-            longitude
+            longitude,
+            accuracy
           },
           evidence: uploadedEvidence,
           services: data.needs || []
@@ -251,30 +275,44 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
           throw new Error(result.message || result.error || `Erreur ${response.status}: ${response.statusText}`)
         }
 
-        if (result.success && result.data?.trackingCode) {
-          const trackingCode = result.data.trackingCode
+        console.log('📥 Réponse complète du serveur:', JSON.stringify(result, null, 2))
+        
+        // Vérifier plusieurs formats de réponse possibles
+        let trackingCode: string | null = null
+        
+        if (result.success) {
+          // Format 1: result.data.trackingCode
+          if (result.data?.trackingCode) {
+            trackingCode = result.data.trackingCode
+          }
+          // Format 2: result.trackingCode (direct)
+          else if (result.trackingCode) {
+            trackingCode = result.trackingCode
+          }
+          // Format 3: result.data (si c'est directement l'objet)
+          else if (result.data && typeof result.data === 'object' && 'trackingCode' in result.data) {
+            trackingCode = (result.data as any).trackingCode
+          }
+        }
+        
+        if (trackingCode) {
+          console.log('✅ Code de suivi reçu:', trackingCode)
           setUniqueCode(trackingCode)
           
-          // Sauvegarder le code localement pour les plaintes anonymes
-          if (data.isAnonymous && typeof window !== 'undefined') {
-            try {
-              const savedCodes = JSON.parse(localStorage.getItem('anonymous_complaint_codes') || '[]')
-              if (!savedCodes.includes(trackingCode)) {
-                savedCodes.push({
-                  code: trackingCode,
-                  date: new Date().toISOString(),
-                  status: 'PENDING'
-                })
-                localStorage.setItem('anonymous_complaint_codes', JSON.stringify(savedCodes))
-              }
-            } catch (e) {
-              console.warn('Impossible de sauvegarder le code localement:', e)
-            }
-          }
+          // NE PAS sauvegarder le code localement pour garantir la confidentialité
+          // Chaque utilisateur doit saisir son code manuellement
+          // L'historique des codes précédents ne doit pas être exposé
           
           addToast("Votre cas a été enregistré avec succès. Conservez précieusement votre code de suivi !", "success")
         } else {
-          throw new Error('Code de suivi non reçu du serveur')
+          console.error('❌ Code de suivi manquant dans la réponse:', {
+            success: result.success,
+            data: result.data,
+            dataKeys: result.data ? Object.keys(result.data) : [],
+            fullResult: result,
+            resultKeys: Object.keys(result)
+          })
+          throw new Error(result.message || result.error || 'Code de suivi non reçu du serveur. Veuillez contacter le support.')
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la soumission du cas'
@@ -300,7 +338,6 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
   const downloadCode = () => {
     if (!uniqueCode) return
     
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
     const trackingUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/suivi`
     
     const element = document.createElement("a")
