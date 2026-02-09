@@ -128,7 +128,8 @@ export default function AdminUsersPage() {
       setLoading(true)
       
       // Charger les utilisateurs depuis l'API
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const { getApiUrl } = await import('@/lib/api-url')
+      const API_URL = getApiUrl()
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
 
       const response = await fetch(`${API_URL}/admin/users`, {
@@ -233,7 +234,8 @@ export default function AdminUsersPage() {
       }
 
       // Appel API pour créer l'utilisateur
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const { getApiUrl } = await import('@/lib/api-url')
+      const API_URL = getApiUrl()
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
       
       const response = await fetch(`${API_URL}/admin/users`, {
@@ -265,7 +267,8 @@ export default function AdminUsersPage() {
   // Modifier le statut d'un utilisateur
   const handleStatusChange = async (userId: string, newStatus: User['status']) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const { getApiUrl } = await import('@/lib/api-url')
+      const API_URL = getApiUrl()
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
       
       const response = await fetch(`${API_URL}/admin/users/${userId}/status`, {
@@ -297,7 +300,8 @@ export default function AdminUsersPage() {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ?")) return
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const { getApiUrl } = await import('@/lib/api-url')
+      const API_URL = getApiUrl()
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
       
       const response = await fetch(`${API_URL}/admin/users/${userId}`, {

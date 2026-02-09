@@ -46,7 +46,8 @@ function ContacterAgentContent() {
 
     try {
       // TODO: Implémenter l'envoi du message à l'agent via l'API
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const { getApiUrl } = await import('@/lib/api-url')
+      const API_URL = getApiUrl()
       
       const response = await fetch(`${API_URL}/contact/agent`, {
         method: 'POST',

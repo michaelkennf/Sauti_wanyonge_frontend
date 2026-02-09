@@ -11,24 +11,8 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/lib/api"
 
-// Définir les URLs de l'API de manière sécurisée
-const getApiBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
-  }
-  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
-}
-
-const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-  }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-}
-
-// Constantes pour utilisation dans le composant
-const API_BASE_URL = getApiBaseUrl()
-const API_URL = getApiUrl()
+// Utiliser la fonction centralisée pour obtenir l'URL de l'API
+import { getApiUrl, getApiBaseUrl } from '@/lib/api-url'
 
 type Step3Props = {
   data: Partial<ComplaintData>
@@ -53,13 +37,24 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
       setError(null)
 
       try {
+        // Obtenir les URLs de l'API dynamiquement
+        const API_BASE_URL = getApiBaseUrl()
+        const API_URL = getApiUrl()
+        
         // Récupérer le token CSRF avec credentials pour obtenir le cookie
         let csrfToken = ''
         try {
+          // Utiliser un timeout et retry pour les erreurs QUIC
+          const csrfController = new AbortController()
+          const csrfTimeout = setTimeout(() => csrfController.abort(), 30000) // 30 secondes
+          
           const csrfResponse = await fetch(`${API_BASE_URL}/api/csrf-token`, {
             method: 'GET',
             credentials: 'include', // Important : inclure les cookies
+            signal: csrfController.signal,
           })
+          
+          clearTimeout(csrfTimeout)
           
           if (csrfResponse.ok) {
             const csrfData = await csrfResponse.json()
@@ -81,8 +76,13 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
           } else {
             console.warn('Erreur lors de la récupération du token CSRF:', csrfResponse.status, csrfResponse.statusText)
           }
-        } catch (csrfError) {
-          console.error('Impossible de récupérer le token CSRF:', csrfError)
+        } catch (csrfError: any) {
+          // Gérer spécifiquement les erreurs QUIC
+          if (csrfError?.message?.includes('QUIC') || csrfError?.message?.includes('ERR_QUIC') || csrfError?.name === 'AbortError') {
+            console.warn('⚠️ Timeout ou erreur QUIC lors de la récupération du token CSRF, tentative de récupération depuis le cookie')
+          } else {
+            console.error('Impossible de récupérer le token CSRF:', csrfError)
+          }
           // Essayer de récupérer depuis le cookie directement
           if (typeof document !== 'undefined') {
             const cookies = document.cookie.split(';')
@@ -152,16 +152,25 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
             })
 
             // Utiliser l'URL de base sans /api pour construire l'URL complète
+            // Ajouter un timeout pour éviter les blocages QUIC
+            const uploadController = new AbortController()
+            const uploadTimeout = setTimeout(() => uploadController.abort(), 120000) // 2 minutes pour les uploads
+            
             const uploadResponse = await fetch(`${API_BASE_URL}/api/uploads/public`, {
               method: 'POST',
               body: formData,
+              signal: uploadController.signal,
               // Ne pas définir Content-Type, laisser le navigateur le faire pour FormData
             })
+            
+            clearTimeout(uploadTimeout)
 
             if (!uploadResponse.ok) {
+              clearTimeout(uploadTimeout)
               throw new Error('Erreur lors de l\'upload des fichiers')
             }
 
+            clearTimeout(uploadTimeout)
             const uploadResult = await uploadResponse.json()
             const uploadedFiles = uploadResult.files || []
 
@@ -240,12 +249,19 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
           payload: complaintPayload
         })
 
+        // Ajouter un timeout pour éviter les blocages QUIC
+        const complaintController = new AbortController()
+        const complaintTimeout = setTimeout(() => complaintController.abort(), 60000) // 60 secondes
+        
         const response = await fetch(`${API_URL}/complaints/victim`, {
           method: 'POST',
           headers,
           credentials: 'include', // Inclure les cookies (pour le CSRF token)
-          body: JSON.stringify(complaintPayload)
+          body: JSON.stringify(complaintPayload),
+          signal: complaintController.signal,
         })
+        
+        clearTimeout(complaintTimeout)
 
         // Vérifier le type de contenu avant de parser JSON
         const contentType = response.headers.get('content-type')

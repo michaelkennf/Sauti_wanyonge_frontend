@@ -55,7 +55,8 @@ function SuiviPageContent() {
     setCaseData(null)
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const { getApiUrl } = await import('@/lib/api-url')
+      const API_URL = getApiUrl()
       const trackingCode = code.trim().toUpperCase()
 
       const response = await fetch(`${API_URL}/complaints/tracking/${trackingCode}`, {

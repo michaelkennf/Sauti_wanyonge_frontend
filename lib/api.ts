@@ -1,30 +1,7 @@
 // Service API pour communiquer avec le backend
-// En production, NEXT_PUBLIC_API_URL doit être configuré dans les variables d'environnement
-// Exemple: https://api.vbgsos.fikiri.org/api ou https://vbgsos.fikiri.org/api
-const getApiUrl = () => {
-  // Si on est côté client, vérifier window.location pour détecter l'environnement
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-    // Si on est en production (pas localhost), essayer de détecter l'URL de l'API
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // En production, l'API peut être sur le même domaine ou un sous-domaine
-      // Essayer d'abord la variable d'environnement
-      if (process.env.NEXT_PUBLIC_API_URL) {
-        return process.env.NEXT_PUBLIC_API_URL
-      }
-      // Sinon, essayer de construire l'URL à partir du domaine actuel
-      // Si le frontend est sur vbgsos.fikiri.org, l'API est probablement sur le même domaine
-      const protocol = window.location.protocol
-      const domain = hostname.replace(/^www\./, '') // Retirer www si présent
-      // Utiliser le même domaine pour l'API (backend sur le même serveur)
-      return `${protocol}//${domain}/api`
-    }
-  }
-  // Par défaut, utiliser localhost en développement
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-}
+import { getApiUrl, getApiBaseUrl } from './api-url'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+const API_BASE_URL = getApiBaseUrl()
 const API_URL = getApiUrl()
 
 export interface ApiResponse<T = any> {
@@ -285,7 +262,9 @@ class ApiService {
     const method = options.method || 'GET'
     
     // Timeout adaptatif selon le type de requête
-    const timeout = method === 'GET' ? 15000 : 30000 // 15s pour GET, 30s pour POST/PUT/DELETE
+    // Timeouts augmentés pour gérer les erreurs QUIC/HTTP3
+    // Les erreurs QUIC peuvent nécessiter plus de temps pour se résoudre
+    const timeout = method === 'GET' ? 30000 : 60000 // 30s pour GET, 60s pour POST/PUT/DELETE
     
     // Ne pas définir Content-Type pour FormData (le navigateur le fait automatiquement)
     const isFormData = options.body instanceof FormData
@@ -451,22 +430,35 @@ class ApiService {
             throw new TimeoutError()
           }
 
-          // Erreur réseau
-          if (error.message.includes('fetch') || error.message.includes('network') || !navigator.onLine) {
+          // Erreur réseau (y compris QUIC/HTTP3)
+          const isNetworkError = error.message.includes('fetch') || 
+                                error.message.includes('network') || 
+                                error.message.includes('QUIC') ||
+                                error.message.includes('ERR_QUIC') ||
+                                !navigator.onLine
+          
+          if (isNetworkError) {
             if (attempt < retries) {
               lastError = new NetworkError('Erreur de connexion réseau')
-              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000))
+              // Attendre plus longtemps pour les erreurs QUIC (peut être temporaire)
+              const delay = error.message.includes('QUIC') ? Math.pow(2, attempt) * 2000 : Math.pow(2, attempt) * 1000
+              await new Promise(resolve => setTimeout(resolve, delay))
               continue
             }
             
-            // Message d'erreur plus détaillé pour les erreurs DNS
+            // Message d'erreur plus détaillé
             const isDnsError = error.message?.includes('ERR_NAME_NOT_RESOLVED') || 
                               error.message?.includes('Failed to fetch') ||
                               error.name === 'TypeError'
             
-            const errorMessage = isDnsError
-              ? `Impossible de se connecter à l'API backend (${this.baseURL}). Vérifiez que NEXT_PUBLIC_API_URL est correctement configuré dans les variables d'environnement.`
-              : 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.'
+            const isQuicError = error.message?.includes('QUIC') || error.message?.includes('ERR_QUIC')
+            
+            let errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.'
+            if (isDnsError) {
+              errorMessage = `Impossible de se connecter à l'API backend (${this.baseURL}). Vérifiez que NEXT_PUBLIC_API_URL est correctement configuré dans les variables d'environnement.`
+            } else if (isQuicError) {
+              errorMessage = 'Erreur de connexion réseau (HTTP/3). Le serveur peut être temporairement indisponible. Veuillez réessayer.'
+            }
             
             throw new NetworkError(errorMessage)
           }

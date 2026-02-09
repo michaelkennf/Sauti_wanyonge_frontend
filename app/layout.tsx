@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   description:
     "Plateforme nationale de signalement et d'assistance aux victimes de violences sexuelles et basées sur le genre en RDC",
   generator: "v0.app",
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

@@ -26,7 +26,9 @@ export default function LoginPage() {
   useEffect(() => {
     const fetchCSRFToken = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        // Utiliser la fonction centralisée pour obtenir l'URL de l'API
+        const { getApiUrl } = await import('@/lib/api-url')
+        const API_URL = getApiUrl()
         await fetch(`${API_URL}/csrf-token`, {
           method: 'GET',
           credentials: 'include',
