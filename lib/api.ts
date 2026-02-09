@@ -13,11 +13,11 @@ const getApiUrl = () => {
         return process.env.NEXT_PUBLIC_API_URL
       }
       // Sinon, essayer de construire l'URL à partir du domaine actuel
-      // Si le frontend est sur vbgsos.fikiri.org, l'API pourrait être sur api.vbgsos.fikiri.org
+      // Si le frontend est sur vbgsos.fikiri.org, l'API est probablement sur le même domaine
       const protocol = window.location.protocol
       const domain = hostname.replace(/^www\./, '') // Retirer www si présent
-      // Essayer api.{domain} d'abord
-      return `${protocol}//api.${domain}/api`
+      // Utiliser le même domaine pour l'API (backend sur le même serveur)
+      return `${protocol}//${domain}/api`
     }
   }
   // Par défaut, utiliser localhost en développement

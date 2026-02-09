@@ -77,11 +77,11 @@ const nextConfig = {
     
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://static.cloudflareinsights.com", // Autoriser Vercel Analytics + Cloudflare Insights
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com", // Autoriser Cloudflare Insights
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https: blob:",
-      `connect-src 'self' ${apiDomain} ${apiUrl} http://localhost:3001 https://api.openai.com https://va.vercel-scripts.com https://static.cloudflareinsights.com`, // API backend + OpenAI + Vercel Analytics + Cloudflare Insights
+      `connect-src 'self' ${apiDomain} ${apiUrl} http://localhost:3001 https://api.openai.com https://static.cloudflareinsights.com`, // API backend + OpenAI + Cloudflare Insights
       "media-src 'self' blob: data:", // Pour les enregistrements audio/vidéo
       "frame-ancestors 'none'",
       "base-uri 'self'",

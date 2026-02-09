@@ -5,7 +5,6 @@ import { GeistMono } from "geist/font/mono"
 import { Suspense } from "react"
 import { Toaster } from "@/components/ui/toaster"
 import { TranslationProvider } from "@/hooks/use-translation"
-import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 const poppins = Poppins({
@@ -33,7 +32,6 @@ export default function RootLayout({
         <TranslationProvider>
           <Suspense fallback={null}>{children}</Suspense>
           <Toaster />
-          <Analytics />
         </TranslationProvider>
       </body>
     </html>
