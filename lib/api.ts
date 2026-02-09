@@ -1,6 +1,31 @@
 // Service API pour communiquer avec le backend
+// En production, NEXT_PUBLIC_API_URL doit être configuré dans les variables d'environnement
+// Exemple: https://api.vbgsos.fikiri.org/api ou https://vbgsos.fikiri.org/api
+const getApiUrl = () => {
+  // Si on est côté client, vérifier window.location pour détecter l'environnement
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    // Si on est en production (pas localhost), essayer de détecter l'URL de l'API
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // En production, l'API peut être sur le même domaine ou un sous-domaine
+      // Essayer d'abord la variable d'environnement
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
+      }
+      // Sinon, essayer de construire l'URL à partir du domaine actuel
+      // Si le frontend est sur vbgsos.fikiri.org, l'API pourrait être sur api.vbgsos.fikiri.org
+      const protocol = window.location.protocol
+      const domain = hostname.replace(/^www\./, '') // Retirer www si présent
+      // Essayer api.{domain} d'abord
+      return `${protocol}//api.${domain}/api`
+    }
+  }
+  // Par défaut, utiliser localhost en développement
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const API_URL = getApiUrl()
 
 export interface ApiResponse<T = any> {
   success: boolean
@@ -128,10 +153,29 @@ class ApiService {
     }
   }
 
+  // Méthode pour mettre à jour les tokens depuis localStorage
+  private syncTokensFromStorage(): void {
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('auth_token')
+      const storedRefreshToken = localStorage.getItem('refresh_token')
+      if (storedToken) {
+        this.token = storedToken
+      }
+      if (storedRefreshToken) {
+        this.refreshToken = storedRefreshToken
+      }
+    }
+  }
+
   // Rafraîchir le token automatiquement
   private async refreshAccessToken(): Promise<string> {
     if (this.isRefreshing && this.refreshPromise) {
       return this.refreshPromise
+    }
+
+    // Récupérer le refreshToken depuis localStorage si pas en mémoire
+    if (!this.refreshToken && typeof window !== 'undefined') {
+      this.refreshToken = localStorage.getItem('refresh_token')
     }
 
     if (!this.refreshToken) {
@@ -141,12 +185,20 @@ class ApiService {
     this.isRefreshing = true
     this.refreshPromise = (async () => {
       try {
+        // Récupérer le token CSRF pour la requête POST
+        const csrfToken = await this.ensureCSRFToken()
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        }
+        if (csrfToken) {
+          headers['X-CSRF-Token'] = csrfToken
+        }
+
         const response = await fetch(`${this.baseURL}/auth/refresh`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({ refreshToken: this.refreshToken }),
+          credentials: 'include', // Important pour les cookies
         })
 
         if (!response.ok) {
@@ -182,6 +234,47 @@ class ApiService {
     return this.refreshPromise
   }
 
+  // Méthode pour récupérer le token CSRF depuis le cookie
+  private getCSRFToken(): string | null {
+    if (typeof window === 'undefined') return null
+    
+    // Récupérer depuis le cookie
+    const cookies = document.cookie.split(';')
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=')
+      if (name === 'csrf_token') {
+        return decodeURIComponent(value)
+      }
+    }
+    
+    return null
+  }
+
+  // Méthode pour récupérer ou générer un token CSRF
+  private async ensureCSRFToken(): Promise<string | null> {
+    // D'abord, essayer de récupérer depuis le cookie
+    let token = this.getCSRFToken()
+    
+    // Si pas de token, faire une requête GET pour en obtenir un
+    if (!token) {
+      try {
+        const response = await fetch(`${this.baseURL}/csrf-token`, {
+          method: 'GET',
+          credentials: 'include', // Important pour recevoir les cookies
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          token = data.data?.csrfToken || null
+        }
+      } catch (error) {
+        console.warn('Impossible de récupérer le token CSRF:', error)
+      }
+    }
+    
+    return token
+  }
+
   // Méthodes utilitaires avec retry et meilleure gestion d'erreurs
   private async request<T>(
     endpoint: string,
@@ -200,8 +293,24 @@ class ApiService {
       'Content-Type': 'application/json',
     }
 
-    if (this.token) {
-      defaultHeaders['Authorization'] = `Bearer ${this.token}`
+    // Synchroniser les tokens depuis localStorage à chaque requête
+    this.syncTokensFromStorage()
+    
+    // Récupérer le token pour l'utiliser dans les headers
+    const token = this.token || (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null)
+    if (token) {
+      defaultHeaders['Authorization'] = `Bearer ${token}`
+      // Mettre à jour le token en mémoire
+      this.token = token
+    }
+
+    // Ajouter le token CSRF pour les méthodes mutantes
+    const mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE']
+    if (mutatingMethods.includes(method)) {
+      const csrfToken = await this.ensureCSRFToken()
+      if (csrfToken) {
+        defaultHeaders['X-CSRF-Token'] = csrfToken
+      }
     }
 
     const makeRequest = async (): Promise<Response> => {
@@ -216,6 +325,8 @@ class ApiService {
             ...options.headers,
           },
           signal: controller.signal,
+          // Important: inclure les cookies pour le CSRF
+          credentials: 'include',
           // Optimisation: cache pour les requêtes GET
           cache: method === 'GET' ? 'default' : 'no-store',
         })
@@ -235,13 +346,30 @@ class ApiService {
         let response = await makeRequest()
 
         // Gérer les erreurs 401 (token expiré) avec refresh automatique
-        if (response.status === 401 && this.refreshToken && attempt < retries) {
-          try {
-            await this.refreshAccessToken()
-            // Réessayer la requête avec le nouveau token
-            response = await makeRequest()
-          } catch (refreshError) {
-            // Si le refresh échoue, déconnecter
+        if (response.status === 401 && attempt < retries) {
+          // Récupérer le refreshToken depuis localStorage si pas en mémoire
+          if (!this.refreshToken && typeof window !== 'undefined') {
+            this.refreshToken = localStorage.getItem('refresh_token')
+          }
+          
+          if (this.refreshToken) {
+            try {
+              await this.refreshAccessToken()
+              // Mettre à jour le token dans les headers pour la nouvelle requête
+              const newToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : this.token
+              if (newToken) {
+                defaultHeaders['Authorization'] = `Bearer ${newToken}`
+                this.token = newToken
+              }
+              // Réessayer la requête avec le nouveau token
+              response = await makeRequest()
+            } catch (refreshError) {
+              // Si le refresh échoue, déconnecter
+              this.logout()
+              throw new ApiError('Session expirée. Veuillez vous reconnecter.', 401, 'SESSION_EXPIRED')
+            }
+          } else {
+            // Pas de refreshToken disponible, déconnecter
             this.logout()
             throw new ApiError('Session expirée. Veuillez vous reconnecter.', 401, 'SESSION_EXPIRED')
           }
@@ -265,6 +393,18 @@ class ApiService {
         if (!response.ok) {
           // Erreurs client (4xx) - ne pas retry
           if (response.status >= 400 && response.status < 500) {
+            // Pour les erreurs 401, vérifier si c'est un problème de token
+            if (response.status === 401) {
+              // Nettoyer le token invalide
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('auth_token')
+                localStorage.removeItem('refresh_token')
+                localStorage.removeItem('user')
+              }
+              this.token = null
+              this.refreshToken = null
+            }
+            
             throw new ApiError(
               data.message || data.error || 'Erreur de requête',
               response.status,
@@ -318,7 +458,17 @@ class ApiService {
               await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000))
               continue
             }
-            throw new NetworkError('Impossible de se connecter au serveur. Vérifiez votre connexion internet.')
+            
+            // Message d'erreur plus détaillé pour les erreurs DNS
+            const isDnsError = error.message?.includes('ERR_NAME_NOT_RESOLVED') || 
+                              error.message?.includes('Failed to fetch') ||
+                              error.name === 'TypeError'
+            
+            const errorMessage = isDnsError
+              ? `Impossible de se connecter à l'API backend (${this.baseURL}). Vérifiez que NEXT_PUBLIC_API_URL est correctement configuré dans les variables d'environnement.`
+              : 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.'
+            
+            throw new NetworkError(errorMessage)
           }
         }
 
@@ -345,10 +495,23 @@ class ApiService {
 
     if (response.success && response.data) {
       this.token = response.data.token
+      this.refreshToken = response.data.refreshToken
+      
+      // Stocker immédiatement dans localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth_token', response.data.token)
-        localStorage.setItem('refresh_token', response.data.refreshToken)
-        localStorage.setItem('user', JSON.stringify(response.data.user))
+        if (response.data.refreshToken) {
+          localStorage.setItem('refresh_token', response.data.refreshToken)
+        }
+        // S'assurer que l'utilisateur est bien stocké avec le bon format
+        if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user))
+        }
+        
+        // Forcer la synchronisation du localStorage
+        if (localStorage.getItem('auth_token') !== response.data.token) {
+          console.warn('Token non correctement stocké dans localStorage')
+        }
       }
     }
 
@@ -797,10 +960,12 @@ class ApiService {
       weekly: Array<{ week: string; cas: number }>
     }
     distributions: {
-      byType: Array<{ name: string; value: number }>
+      byViolenceType?: Array<{ name: string; value: number }>
+      byType?: Array<{ name: string; value: number }>
       byProvince: Array<{ zone: string; cas: number }>
       byTreatmentStatus: Array<{ status: string; count: number }>
-      byComplaintType: Array<{ type: string; count: number }>
+      byComplaintType?: Array<{ type: string; count: number }>
+      byReportingMode?: Array<{ mode: string; count: number }>
     }
     metrics: {
       averageProcessingTime: number
@@ -830,10 +995,12 @@ class ApiService {
         weekly: Array<{ week: string; cas: number }>
       }
       distributions: {
-        byType: Array<{ name: string; value: number }>
+        byViolenceType?: Array<{ name: string; value: number }>
+        byType?: Array<{ name: string; value: number }>
         byProvince: Array<{ zone: string; cas: number }>
         byTreatmentStatus: Array<{ status: string; count: number }>
-        byComplaintType: Array<{ type: string; count: number }>
+        byComplaintType?: Array<{ type: string; count: number }>
+        byReportingMode?: Array<{ mode: string; count: number }>
       }
       metrics: {
         averageProcessingTime: number
@@ -880,6 +1047,225 @@ class ApiService {
     }
 
     return response.blob()
+  }
+
+  // ========================================================================
+  // ADMIN ENDPOINTS
+  // ========================================================================
+
+  /**
+   * Récupérer tous les dossiers admin avec filtres
+   */
+  async getAdminCases(filters?: {
+    page?: number
+    limit?: number
+    status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED'
+    type?: 'VICTIM_DIRECT' | 'INVESTIGATOR_ASSISTED'
+    province?: string
+    territory?: string
+    violenceType?: string
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+    startDate?: string
+    endDate?: string
+    sortBy?: 'date' | 'status' | 'priority' | 'province' | 'violenceType'
+    sortOrder?: 'asc' | 'desc'
+  }): Promise<{
+    cases: any[]
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      totalPages: number
+    }
+  }> {
+    const queryParams = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString())
+        }
+      })
+    }
+
+    const response = await this.request<{
+      cases: any[]
+      pagination: {
+        page: number
+        limit: number
+        total: number
+        totalPages: number
+      }
+    }>(`/admin/cases${queryParams.toString() ? `?${queryParams.toString()}` : ''}`)
+    return response.data!
+  }
+
+  /**
+   * Récupérer un dossier complet par ID
+   */
+  async getAdminCaseById(id: string): Promise<any> {
+    const response = await this.request<any>(`/admin/case/${id}`)
+    return response.data!
+  }
+
+  /**
+   * Mettre à jour le statut d'un dossier
+   */
+  async updateAdminCaseStatus(id: string, status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED', reason?: string, notes?: string): Promise<any> {
+    const response = await this.request<any>(`/admin/case/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, reason, notes })
+    })
+    return response.data!
+  }
+
+  /**
+   * Ajouter des notes internes à un dossier
+   */
+  async addAdminCaseNotes(id: string, notes: string, isInternal: boolean = true): Promise<any> {
+    const response = await this.request<any>(`/admin/case/${id}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ notes, isInternal })
+    })
+    return response.data!
+  }
+
+  /**
+   * Marquer une preuve comme exploitée
+   */
+  async markEvidenceExploited(evidenceId: string, exploited: boolean, notes?: string): Promise<any> {
+    const response = await this.request<any>(`/admin/evidence/${evidenceId}/exploited`, {
+      method: 'PATCH',
+      body: JSON.stringify({ exploited, notes })
+    })
+    return response.data!
+  }
+
+  /**
+   * Récupérer les statistiques globales admin
+   */
+  async getAdminGlobalStats(): Promise<{
+    total: number
+    pending: number
+    inProgress: number
+    completed: number
+    closed: number
+    byOrigin: {
+      public: number
+      investigator: number
+    }
+  }> {
+    const response = await this.request<any>('/admin/stats/global')
+    return response.data!
+  }
+
+  /**
+   * Récupérer les statistiques par type de violence
+   */
+  async getAdminViolenceStats(): Promise<Array<{ type: string; count: number }>> {
+    const response = await this.request<Array<{ type: string; count: number }>>('/admin/stats/violence')
+    return response.data!
+  }
+
+  /**
+   * Récupérer les statistiques géographiques
+   */
+  async getAdminLocationStats(): Promise<{
+    byProvince: Array<{ province: string; count: number }>
+    byTerritory: Array<{ territory: string; count: number }>
+  }> {
+    const response = await this.request<any>('/admin/stats/location')
+    return response.data!
+  }
+
+  /**
+   * Récupérer les tendances et analyses temporelles
+   */
+  async getAdminTrends(startDate?: string, endDate?: string): Promise<{
+    trends: Array<{
+      month: string
+      total: number
+      byStatus: { [key: string]: number }
+      byType: { [key: string]: number }
+    }>
+  }> {
+    const queryParams = new URLSearchParams()
+    if (startDate) queryParams.append('startDate', startDate)
+    if (endDate) queryParams.append('endDate', endDate)
+
+    const response = await this.request<any>(`/admin/analytics/trends${queryParams.toString() ? `?${queryParams.toString()}` : ''}`)
+    return response.data!
+  }
+
+  /**
+   * Exporter les dossiers en Excel (admin)
+   */
+  async exportAdminExcel(filters?: {
+    status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED'
+    type?: 'VICTIM_DIRECT' | 'INVESTIGATOR_ASSISTED'
+    province?: string
+    territory?: string
+    violenceType?: string
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+    startDate?: string
+    endDate?: string
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString())
+        }
+      })
+    }
+
+    const url = `${this.baseURL}/admin/export/excel${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    
+    // Récupérer le token dynamiquement
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : this.token
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Erreur lors de l\'export Excel' }))
+      throw new ApiError(error.message || 'Erreur lors de l\'export Excel', response.status)
+    }
+
+    return response.blob()
+  }
+
+  /**
+   * Exporter les données pour graphiques
+   */
+  async exportAdminGraphs(): Promise<any> {
+    const response = await this.request<any>('/admin/export/graphs')
+    return response.data!
+  }
+
+  /**
+   * Chatbot analytique admin
+   */
+  async queryAdminChatbot(query: string, context?: {
+    startDate?: string
+    endDate?: string
+    province?: string
+    territory?: string
+  }): Promise<{
+    answer: string
+    data: any
+  }> {
+    const response = await this.request<{
+      answer: string
+      data: any
+    }>('/admin/chatbot/query', {
+      method: 'POST',
+      body: JSON.stringify({ query, context })
+    })
+    return response.data!
   }
 
   /**

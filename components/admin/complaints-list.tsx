@@ -155,7 +155,7 @@ export function ComplaintsList() {
   const loadCases = async () => {
     setIsLoading(true)
     try {
-      // TODO: Adapter selon les filtres réels de l'API
+      // Utiliser les nouveaux endpoints admin
       const params: any = {
         page: 1,
         limit: 100,
@@ -167,20 +167,20 @@ export function ComplaintsList() {
         params.type = "INVESTIGATOR_ASSISTED"
       }
 
-      const response = await apiService.getComplaints(params)
+      const response = await apiService.getAdminCases(params)
       
       // Transformer les données de l'API vers le format Case
-      const transformedCases: Case[] = response.data.map((complaint: any) => ({
+      const transformedCases: Case[] = response.cases.map((complaint: any) => ({
         id: complaint.id,
         code: complaint.trackingCode || complaint.id,
-        type: complaint.beneficiaryData?.natureOfFacts || "Non spécifié",
-        date: complaint.createdAt ? new Date(complaint.createdAt).toLocaleDateString() : "",
-        location: complaint.geolocation?.address || complaint.geolocation?.village || "Non spécifié",
+        type: complaint.violenceType || complaint.beneficiaryNatureOfFacts || "Non spécifié",
+        date: complaint.incidentDate || (complaint.createdAt ? new Date(complaint.createdAt).toISOString().split('T')[0] : ""),
+        location: `${complaint.geolocationProvince || ''}, ${complaint.geolocationTerritory || ''}, ${complaint.geolocationVillage || ''}`.trim() || "Non spécifié",
         status: mapStatus(complaint.status),
         urgency: mapPriority(complaint.priority),
         submittedDate: complaint.createdAt ? new Date(complaint.createdAt).toLocaleDateString() : "",
-        source: activeTab === "public" ? "public" : "investigator",
-        contactPreference: complaint.type === "VICTIM_DIRECT" ? "anonymous" : undefined,
+        source: complaint.type === "VICTIM_DIRECT" ? "public" : "investigator",
+        contactPreference: complaint.reportingMode === "ANONYMOUS" ? "anonymous" : "contact",
         treatmentStatus: mapTreatmentStatus(complaint.treatmentStatus),
         treatmentDetails: complaint.treatmentDetails,
         transmittedTo: complaint.transmittedTo,
@@ -188,7 +188,7 @@ export function ComplaintsList() {
           type: mapEvidenceType(ev.type),
           fileName: ev.fileName,
           fileSize: ev.fileSize || 0,
-          url: ev.url,
+          url: ev.filePath ? `/api/uploads/${ev.filePath}` : undefined,
         })) || [],
       }))
 
@@ -201,14 +201,14 @@ export function ComplaintsList() {
       logger.error('Erreur lors du chargement des cas', error, 'ComplaintsList')
       toast({
         title: "Erreur",
-        description: "Impossible de charger les cas. Utilisation des données de démonstration.",
+        description: "Impossible de charger les cas. Veuillez réessayer.",
         variant: "destructive"
       })
-      // Fallback vers les données mock en cas d'erreur
+      // Ne pas utiliser les données mock, laisser vide en cas d'erreur
       if (activeTab === "public") {
-        setPublicCases(mockPublicCases)
+        setPublicCases([])
       } else {
-        setInvestigatorCases(mockInvestigatorCases)
+        setInvestigatorCases([])
       }
     } finally {
       setIsLoading(false)

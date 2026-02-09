@@ -1,11 +1,13 @@
 // Authentication utilities and types
 export interface User {
   id: string
-  name: string
+  name?: string
   email: string
-  role: "admin" | "enqueteur" | "institution" | "visiteur" | "investigator" | "ngo" | "assurance"
+  role: "admin" | "ADMIN" | "enqueteur" | "investigator" | "INVESTIGATOR" | "institution" | "ngo" | "NGO" | "assurance" | "ASSURANCE" | "visiteur" | "VICTIM"
   province?: string
-  isActive: boolean
+  isActive?: boolean
+  status?: string
+  aiAccessLevel?: string
   createdAt: string
 }
 

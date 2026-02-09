@@ -60,13 +60,28 @@ const nextConfig = {
     const isDev = process.env.NODE_ENV === 'development'
     const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
     
+    // Récupérer l'URL de l'API depuis les variables d'environnement
+    // En production, cela devrait être configuré dans Vercel ou votre plateforme d'hébergement
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+    const apiUrlEnv = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+    
+    // Extraire le domaine de l'URL de l'API pour la CSP
+    let apiDomain = 'http://localhost:3001'
+    try {
+      const apiUrlObj = new URL(apiUrlEnv)
+      apiDomain = `${apiUrlObj.protocol}//${apiUrlObj.host}`
+    } catch (e) {
+      // Si l'URL n'est pas valide, utiliser la valeur par défaut
+      console.warn('⚠️ URL API invalide pour CSP, utilisation de localhost:', apiUrlEnv)
+    }
+    
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com", // Autoriser Vercel Analytics
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://static.cloudflareinsights.com", // Autoriser Vercel Analytics + Cloudflare Insights
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https: blob:",
-      `connect-src 'self' ${apiUrl} http://localhost:3001 https://api.openai.com https://va.vercel-scripts.com`, // API backend + OpenAI + Vercel Analytics
+      `connect-src 'self' ${apiDomain} ${apiUrl} http://localhost:3001 https://api.openai.com https://va.vercel-scripts.com https://static.cloudflareinsights.com`, // API backend + OpenAI + Vercel Analytics + Cloudflare Insights
       "media-src 'self' blob: data:", // Pour les enregistrements audio/vidéo
       "frame-ancestors 'none'",
       "base-uri 'self'",

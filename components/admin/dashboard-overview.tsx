@@ -43,6 +43,19 @@ export function DashboardOverview() {
   const loadAnalytics = async () => {
     try {
       setLoading(true)
+      
+      // Vérifier l'authentification avant de charger
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      if (!token) {
+        toast({
+          title: "Authentification requise",
+          description: "Veuillez vous connecter pour accéder au dashboard.",
+          variant: "destructive"
+        })
+        setAnalytics(null)
+        return
+      }
+
       const filters: any = {}
       
       if (selectedProvince !== "all") {
@@ -59,13 +72,45 @@ export function DashboardOverview() {
         filters.startDate = oneYearAgo.toISOString().split('T')[0]
       }
 
+      // Utiliser l'endpoint analytics/dashboard qui est déjà optimisé
       const data = await apiService.getDashboardAnalytics(filters)
-      setAnalytics(data)
+      
+      // Vérifier que les données sont valides
+      if (data && data.overview) {
+        setAnalytics(data)
+      } else {
+        logger.warn('Données invalides reçues du serveur', data, 'DashboardOverview')
+        setAnalytics(null)
+        toast({
+          title: "Avertissement",
+          description: "Les données reçues sont invalides. Veuillez réessayer.",
+          variant: "destructive"
+        })
+      }
     } catch (error: any) {
       logger.error('Erreur lors du chargement des statistiques', error, 'DashboardOverview')
+      
+      // Si erreur 401, rediriger vers la page de login
+      if (error.status === 401 || error.message?.includes('Token') || error.message?.includes('authentification')) {
+        toast({
+          title: "Session expirée",
+          description: "Votre session a expiré. Veuillez vous reconnecter.",
+          variant: "destructive"
+        })
+        setAnalytics(null)
+        // Rediriger vers la page de login après un court délai
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login'
+          }
+        }, 2000)
+        return
+      }
+
+      setAnalytics(null)
       toast({
         title: "Erreur",
-        description: "Impossible de charger les statistiques. Veuillez réessayer.",
+        description: error.message || "Impossible de charger les statistiques. Veuillez réessayer.",
         variant: "destructive"
       })
     } finally {
@@ -76,28 +121,28 @@ export function DashboardOverview() {
   const statsData = analytics ? [
     { 
       label: "Total des cas", 
-      value: analytics.overview.total.toLocaleString(), 
+      value: (analytics.overview?.total || 0).toLocaleString(), 
       icon: FileText, 
       color: "text-blue-600",
       change: "+12%"
     },
     { 
       label: "Cas urgents", 
-      value: analytics.overview.urgent.toLocaleString(), 
+      value: (analytics.overview?.urgent || 0).toLocaleString(), 
       icon: AlertCircle, 
       color: "text-red-600",
       change: "+5%"
     },
     { 
       label: "Cas traités", 
-      value: analytics.overview.completed.toLocaleString(), 
+      value: (analytics.overview?.completed || 0).toLocaleString(), 
       icon: CheckCircle, 
       color: "text-green-600",
-      change: `+${analytics.metrics.completionRate.toFixed(1)}%`
+      change: `+${(analytics.metrics?.completionRate || 0).toFixed(1)}%`
     },
     { 
       label: "En cours", 
-      value: analytics.overview.inProgress.toLocaleString(), 
+      value: (analytics.overview?.inProgress || 0).toLocaleString(), 
       icon: Clock, 
       color: "text-yellow-600",
       change: "-3%"
@@ -117,9 +162,34 @@ export function DashboardOverview() {
   if (!analytics) {
     return (
       <div className="space-y-6">
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Aucune donnée disponible</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Vue d'ensemble</h1>
+            <p className="text-muted-foreground">Statistiques et aperçu des cas</p>
+          </div>
         </div>
+        <Card className="border-border/50">
+          <CardContent className="p-12">
+            <div className="text-center space-y-4">
+              <BarChart3 className="h-16 w-16 mx-auto text-muted-foreground" />
+              <h3 className="text-xl font-semibold">Aucune donnée disponible</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Il n'y a pas encore de données à afficher. Les statistiques apparaîtront une fois que des plaintes auront été enregistrées dans le système.
+              </p>
+              <div className="pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Les données incluront :
+                </p>
+                <ul className="mt-2 text-sm text-muted-foreground space-y-1">
+                  <li>• Nombre total de cas signalés</li>
+                  <li>• Répartition par type de violence</li>
+                  <li>• Statistiques géographiques</li>
+                  <li>• Tendances temporelles</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -200,17 +270,17 @@ export function DashboardOverview() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Taux de complétion</span>
-                <span className="text-2xl font-bold">{analytics.metrics.completionRate.toFixed(1)}%</span>
+                <span className="text-2xl font-bold">{(analytics.metrics?.completionRate || 0).toFixed(1)}%</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
                 <div 
                   className="bg-primary h-2 rounded-full transition-all"
-                  style={{ width: `${analytics.metrics.completionRate}%` }}
+                  style={{ width: `${analytics.metrics?.completionRate || 0}%` }}
                 />
               </div>
               <div className="flex items-center justify-between pt-2">
                 <span className="text-sm text-muted-foreground">Temps moyen de traitement</span>
-                <span className="text-2xl font-bold">{analytics.metrics.averageProcessingTime.toFixed(1)} jours</span>
+                <span className="text-2xl font-bold">{(analytics.metrics?.averageProcessingTime || 0).toFixed(1)} jours</span>
               </div>
             </div>
           </CardContent>
@@ -227,10 +297,10 @@ export function DashboardOverview() {
               <PieChart>
                 <Pie
                   data={[
-                    { name: "En attente", value: analytics.overview.pending },
-                    { name: "En cours", value: analytics.overview.inProgress },
-                    { name: "Complétés", value: analytics.overview.completed },
-                    { name: "Fermés", value: analytics.overview.closed }
+                    { name: "En attente", value: analytics.overview?.pending || 0 },
+                    { name: "En cours", value: analytics.overview?.inProgress || 0 },
+                    { name: "Complétés", value: analytics.overview?.completed || 0 },
+                    { name: "Fermés", value: analytics.overview?.closed || 0 }
                   ]}
                   dataKey="value"
                   nameKey="name"
@@ -239,7 +309,12 @@ export function DashboardOverview() {
                   outerRadius={70}
                   label
                 >
-                  {[analytics.overview.pending, analytics.overview.inProgress, analytics.overview.completed, analytics.overview.closed].map((entry, index) => (
+                  {[
+                    analytics.overview?.pending || 0, 
+                    analytics.overview?.inProgress || 0, 
+                    analytics.overview?.completed || 0, 
+                    analytics.overview?.closed || 0
+                  ].map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -261,7 +336,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={analytics.trends.monthly}>
+              <AreaChart data={analytics.trends?.monthly || []}>
                 <defs>
                   <linearGradient id="colorCas" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
@@ -301,7 +376,7 @@ export function DashboardOverview() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie 
-                  data={analytics.distributions.byType} 
+                  data={analytics.distributions.byViolenceType || analytics.distributions.byType || []} 
                   dataKey="value" 
                   nameKey="name" 
                   cx="50%" 
@@ -309,7 +384,7 @@ export function DashboardOverview() {
                   outerRadius={100} 
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                 >
-                  {analytics.distributions.byType.map((entry: any, index: number) => (
+                  {(analytics.distributions.byViolenceType || analytics.distributions.byType || []).map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -327,7 +402,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={analytics.trends.weekly}>
+              <LineChart data={analytics.trends?.weekly || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -359,7 +434,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={analytics.distributions.byTreatmentStatus}>
+              <BarChart data={analytics.distributions?.byTreatmentStatus || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="status" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -387,7 +462,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={analytics.distributions.byProvince} layout="vertical">
+              <BarChart data={analytics.distributions?.byProvince || []} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis dataKey="zone" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={100} />

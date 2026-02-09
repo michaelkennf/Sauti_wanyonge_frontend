@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
-import { FileVideo, FileAudio, FileImage, FileText, Download, Play } from "lucide-react"
+import { FileVideo, FileAudio, FileImage, FileText, Download, Play, Save } from "lucide-react"
 import { apiService } from "@/lib/api"
 import { logger } from "@/lib/logger"
+import { useToast } from "@/components/ui/use-toast"
 
 type Case = {
   id: string
@@ -41,17 +42,24 @@ type ComplaintDetailsModalProps = {
 }
 
 export function ComplaintDetailsModal({ complaint, onClose, onTreatment }: ComplaintDetailsModalProps) {
+  const { toast } = useToast()
   const [status, setStatus] = useState(complaint.status)
   const [fullDetails, setFullDetails] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [internalNotes, setInternalNotes] = useState("")
 
-  // Charger les détails complets depuis l'API
+  // Charger les détails complets depuis l'API admin
   useEffect(() => {
     const loadFullDetails = async () => {
       setIsLoading(true)
       try {
-        const details = await apiService.getComplaintById(complaint.id)
+        const details = await apiService.getAdminCaseById(complaint.id)
         setFullDetails(details)
+        // Mettre à jour le statut depuis les détails complets
+        if (details.status) {
+          setStatus(details.status)
+        }
       } catch (error) {
         logger.error('Erreur lors du chargement des détails', error, 'ComplaintDetailsModal')
       } finally {
@@ -249,7 +257,19 @@ export function ComplaintDetailsModal({ complaint, onClose, onTreatment }: Compl
             <div className="space-y-4 border-t border-border pt-4">
               <div className="space-y-2">
                 <Label htmlFor="status">Changer le statut</Label>
-                <Select value={status} onValueChange={setStatus}>
+                <Select 
+                  value={status} 
+                  onValueChange={(value) => {
+                    // Mapper les valeurs affichées vers les valeurs API
+                    const statusMap: Record<string, string> = {
+                      'Reçue': 'PENDING',
+                      'En cours': 'IN_PROGRESS',
+                      'Transmise': 'COMPLETED',
+                      'Clôturée': 'CLOSED'
+                    }
+                    setStatus(value)
+                  }}
+                >
                   <SelectTrigger id="status">
                     <SelectValue />
                   </SelectTrigger>
@@ -261,6 +281,39 @@ export function ComplaintDetailsModal({ complaint, onClose, onTreatment }: Compl
                   </SelectContent>
                 </Select>
               </div>
+              <Button 
+                onClick={async () => {
+                  setIsSaving(true)
+                  try {
+                    const statusMap: Record<string, 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED'> = {
+                      'Reçue': 'PENDING',
+                      'En cours': 'IN_PROGRESS',
+                      'Transmise': 'COMPLETED',
+                      'Clôturée': 'CLOSED'
+                    }
+                    await apiService.updateAdminCaseStatus(complaint.id, statusMap[status] || 'PENDING')
+                    toast({
+                      title: "Succès",
+                      description: "Statut mis à jour avec succès",
+                    })
+                    if (onTreatment) onTreatment()
+                  } catch (error) {
+                    logger.error('Erreur lors de la mise à jour du statut', error, 'ComplaintDetailsModal')
+                    toast({
+                      title: "Erreur",
+                      description: "Impossible de mettre à jour le statut",
+                      variant: "destructive"
+                    })
+                  } finally {
+                    setIsSaving(false)
+                  }
+                }}
+                disabled={isSaving}
+                className="w-full"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? "Enregistrement..." : "Enregistrer le statut"}
+              </Button>
             </div>
           </TabsContent>
 
@@ -274,7 +327,17 @@ export function ComplaintDetailsModal({ complaint, onClose, onTreatment }: Compl
                         {getEvidenceIcon(evidence.type)}
                         <span className="font-medium text-sm">{evidence.fileName}</span>
                       </div>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          if (evidence.filePath) {
+                            window.open(`/api/uploads/${evidence.filePath}`, '_blank')
+                          } else if (evidence.url) {
+                            window.open(evidence.url, '_blank')
+                          }
+                        }}
+                      >
                         <Download className="h-4 w-4" />
                       </Button>
                     </div>
@@ -283,23 +346,31 @@ export function ComplaintDetailsModal({ complaint, onClose, onTreatment }: Compl
                        evidence.type === "audio" ? "Audio" : 
                        evidence.type === "image" ? "Image" : "Document"}
                     </p>
-                    {evidence.type === "video" && (
-                      <div className="aspect-video bg-secondary rounded-lg flex items-center justify-center">
-                        <Button variant="ghost" size="sm">
-                          <Play className="h-6 w-6" />
-                        </Button>
+                    {evidence.type === "video" && evidence.filePath && (
+                      <div className="aspect-video bg-secondary rounded-lg overflow-hidden">
+                        <video 
+                          src={`/api/uploads/${evidence.filePath}`}
+                          controls
+                          className="w-full h-full object-contain"
+                        />
                       </div>
                     )}
-                    {evidence.type === "audio" && (
-                      <div className="bg-secondary rounded-lg p-4 flex items-center justify-center">
-                        <Button variant="ghost" size="sm">
-                          <Play className="h-6 w-6" />
-                        </Button>
+                    {evidence.type === "audio" && evidence.filePath && (
+                      <div className="bg-secondary rounded-lg p-4">
+                        <audio 
+                          src={`/api/uploads/${evidence.filePath}`}
+                          controls
+                          className="w-full"
+                        />
                       </div>
                     )}
-                    {evidence.type === "image" && (
-                      <div className="aspect-video bg-secondary rounded-lg flex items-center justify-center">
-                        <FileImage className="h-12 w-12 text-muted-foreground" />
+                    {evidence.type === "image" && evidence.filePath && (
+                      <div className="aspect-video bg-secondary rounded-lg overflow-hidden">
+                        <img 
+                          src={`/api/uploads/${evidence.filePath}`}
+                          alt={evidence.fileName}
+                          className="w-full h-full object-contain"
+                        />
                       </div>
                     )}
                   </div>
@@ -313,6 +384,83 @@ export function ComplaintDetailsModal({ complaint, onClose, onTreatment }: Compl
           </TabsContent>
 
           <TabsContent value="treatment" className="space-y-4">
+            {/* Historique du traitement */}
+            {fullDetails?.statusHistory && fullDetails.statusHistory.length > 0 && (
+              <div className="space-y-2">
+                <Label>Historique des changements de statut</Label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {fullDetails.statusHistory.map((history: any, index: number) => (
+                    <div key={index} className="border rounded-lg p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">
+                          {history.oldStatus || 'Nouveau'} → {history.newStatus}
+                        </span>
+                        <span className="text-muted-foreground text-xs">
+                          {new Date(history.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {history.reason && (
+                        <p className="text-muted-foreground mt-1">{history.reason}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ajout de notes internes */}
+            <div className="space-y-4 border-t border-border pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="internalNotes">Notes internes</Label>
+                <Textarea
+                  id="internalNotes"
+                  placeholder="Ajouter des notes internes sur ce dossier..."
+                  value={internalNotes}
+                  onChange={(e) => setInternalNotes(e.target.value)}
+                  rows={4}
+                />
+              </div>
+              <Button
+                onClick={async () => {
+                  if (!internalNotes.trim()) {
+                    toast({
+                      title: "Erreur",
+                      description: "Veuillez saisir des notes",
+                      variant: "destructive"
+                    })
+                    return
+                  }
+                  setIsSaving(true)
+                  try {
+                    await apiService.addAdminCaseNotes(complaint.id, internalNotes, true)
+                    toast({
+                      title: "Succès",
+                      description: "Notes ajoutées avec succès",
+                    })
+                    setInternalNotes("")
+                    // Recharger les détails pour voir les notes mises à jour
+                    const details = await apiService.getAdminCaseById(complaint.id)
+                    setFullDetails(details)
+                  } catch (error) {
+                    logger.error('Erreur lors de l\'ajout des notes', error, 'ComplaintDetailsModal')
+                    toast({
+                      title: "Erreur",
+                      description: "Impossible d'ajouter les notes",
+                      variant: "destructive"
+                    })
+                  } finally {
+                    setIsSaving(false)
+                  }
+                }}
+                disabled={isSaving || !internalNotes.trim()}
+                className="w-full"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? "Enregistrement..." : "Ajouter les notes"}
+              </Button>
+            </div>
+
+            {/* Détails du traitement existants */}
             <div className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">Statut de traitement</p>

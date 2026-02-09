@@ -87,9 +87,93 @@ export function ChatInterface() {
   }
 
   const generateResponse = (userMessage: string) => {
-    const lowerMessage = userMessage.toLowerCase()
+    const lowerMessage = userMessage.toLowerCase().trim()
+    
+    // Détecter les réponses numériques (1, 2, 3, 4, 5)
+    const numericMatch = lowerMessage.match(/^(\d+)$/)
+    if (numericMatch) {
+      const optionNumber = parseInt(numericMatch[1])
+      
+      switch (optionNumber) {
+        case 1:
+          return {
+            content:
+              "Voici les informations sur les centres de santé et soins médicaux disponibles :\n\nLes centres de santé offrent des services spécialisés pour les victimes de violences basées sur le genre, incluant :\n• Soins médicaux d'urgence\n• Examens médicaux légaux\n• Prévention des IST/VIH\n• Suivi médical post-traumatique\n• Consultations confidentielles et gratuites",
+            resources: [
+              {
+                title: "Hôpital Général de Kinshasa",
+                description: "Services d'urgence et soins spécialisés pour victimes de violences",
+                contact: "+243 XXX XXX XXX",
+                address: "Avenue de la Libération, Kinshasa",
+              },
+              {
+                title: "Centre Médical Lisanga",
+                description: "Consultations gratuites et confidentielles. Soutien psychologique disponible.",
+                contact: "+243 XXX XXX XXX",
+                address: "Quartier Ngaliema, Kinshasa",
+              },
+            ],
+          }
+        case 2:
+          return {
+            content:
+              "Voici les informations sur l'assistance juridique et vos droits :\n\nEn tant que victime, vous avez plusieurs droits importants :\n• Le droit à la protection et à la sécurité\n• Le droit à des soins médicaux gratuits\n• Le droit à l'assistance juridique\n• Le droit à la confidentialité\n• Le droit de signaler un cas\n• Le droit à une procédure judiciaire équitable\n\nLes services juridiques peuvent vous aider à :\n• Comprendre vos droits\n• Préparer une plainte\n• Vous accompagner dans les procédures judiciaires\n• Obtenir une protection légale",
+            resources: [
+              {
+                title: "Clinique Juridique de Kinshasa",
+                description: "Conseil juridique gratuit et accompagnement dans les procédures judiciaires",
+                contact: "+243 XXX XXX XXX",
+                address: "Boulevard du 30 Juin, Kinshasa",
+              },
+              {
+                title: "Association des Femmes Juristes",
+                description: "Assistance juridique spécialisée pour les victimes de VBG. Accompagnement personnalisé.",
+                contact: "+243 XXX XXX XXX",
+                address: "Commune de la Gombe, Kinshasa",
+              },
+            ],
+          }
+        case 3:
+          return {
+            content:
+              "Voici les informations sur le soutien psychologique :\n\nLe soutien psychologique est essentiel pour votre processus de guérison. Les services disponibles incluent :\n• Thérapie individuelle\n• Groupes de parole et de soutien\n• Accompagnement post-traumatique\n• Écoute active et empathique\n• Techniques de gestion du stress et de l'anxiété\n• Aide pour reconstruire la confiance en soi\n\nCes services sont confidentiels, gratuits et accessibles 24h/24.",
+            resources: [
+              {
+                title: "Centre de Soutien Psychosocial Tumaini",
+                description: "Thérapie individuelle et groupes de parole. Soutien psychologique gratuit.",
+                contact: "+243 XXX XXX XXX",
+                address: "Avenue Kabambare, Kinshasa",
+              },
+              {
+                title: "Ligne d'Écoute Nationale",
+                description: "Service d'écoute téléphonique 24h/24, 7j/7. Gratuit et confidentiel.",
+                contact: "123 (gratuit)",
+                address: "Service téléphonique",
+              },
+            ],
+          }
+        case 4:
+          return {
+            content:
+              "Voici comment signaler un cas :\n\nPour signaler un cas, vous pouvez utiliser notre formulaire sécurisé. Le processus est simple et confidentiel :\n\n1. Choisissez si vous souhaitez rester anonyme ou fournir vos coordonnées\n2. Décrivez l'incident avec autant de détails que possible (date, lieu, circonstances)\n3. Ajoutez des preuves si disponibles (photos, vidéos, enregistrements audio)\n4. Recevez un code confidentiel unique pour suivre votre dossier\n5. Votre cas sera traité en toute confidentialité par notre équipe\n\nVotre signalement sera :\n• Traité avec respect et empathie\n• Protégé par la confidentialité\n• Suivi par des professionnels qualifiés\n• Transmis aux services compétents si nécessaire\n\nVoulez-vous commencer maintenant ?",
+            resources: [],
+          }
+        case 5:
+          return {
+            content:
+              "Voici les services disponibles près de chez vous :\n\nPour trouver les services les plus proches de votre localisation, j'ai besoin de votre autorisation pour accéder à votre géolocalisation. Une fois autorisée, je pourrai vous fournir :\n• Les centres de santé les plus proches\n• Les services juridiques disponibles dans votre zone\n• Les ONG et associations actives près de vous\n• Les numéros d'urgence locaux\n• Les horaires et contacts de chaque service\n\nSouhaitez-vous partager votre localisation pour obtenir ces informations personnalisées ?",
+            resources: [],
+          }
+        default:
+          return {
+            content:
+              "Je n'ai pas reconnu ce numéro. Veuillez répondre par 1, 2, 3, 4 ou 5 pour obtenir des informations sur :\n\n1. Les centres de santé et soins médicaux\n2. L'assistance juridique et vos droits\n3. Le soutien psychologique\n4. Comment signaler un cas\n5. Les services disponibles près de chez vous",
+            resources: [],
+          }
+      }
+    }
 
-    if (lowerMessage.includes("soins") || lowerMessage.includes("médical") || lowerMessage.includes("santé")) {
+    if (lowerMessage.includes("soins") || lowerMessage.includes("médical") || lowerMessage.includes("santé") || lowerMessage === "1") {
       return {
         content:
           "Je comprends que vous avez besoin de soins médicaux. Voici les centres de santé disponibles près de chez vous qui peuvent vous aider :",
@@ -110,7 +194,7 @@ export function ChatInterface() {
       }
     }
 
-    if (lowerMessage.includes("juridique") || lowerMessage.includes("avocat") || lowerMessage.includes("justice")) {
+    if (lowerMessage.includes("juridique") || lowerMessage.includes("avocat") || lowerMessage.includes("justice") || lowerMessage === "2" || lowerMessage.includes("droits")) {
       return {
         content:
           "Pour une assistance juridique, voici les services disponibles qui peuvent vous accompagner dans vos démarches :",
@@ -134,7 +218,8 @@ export function ChatInterface() {
     if (
       lowerMessage.includes("psychologique") ||
       lowerMessage.includes("traumatisme") ||
-      lowerMessage.includes("soutien")
+      lowerMessage.includes("soutien") ||
+      lowerMessage === "3"
     ) {
       return {
         content:
@@ -156,25 +241,25 @@ export function ChatInterface() {
       }
     }
 
-    if (lowerMessage.includes("droits") || lowerMessage.includes("que faire")) {
+    if (lowerMessage.includes("plainte") || lowerMessage.includes("signaler") || lowerMessage === "4") {
       return {
         content:
-          "En tant que victime, vous avez plusieurs droits importants :\n\n• Le droit à la protection et à la sécurité\n• Le droit à des soins médicaux gratuits\n• Le droit à l'assistance juridique\n• Le droit à la confidentialité\n• Le droit de signaler un cas\n\nVous pouvez signaler un cas anonyme sur notre plateforme à tout moment. Souhaitez-vous que je vous guide dans cette démarche ?",
+          "Voici comment signaler un cas :\n\nPour signaler un cas, vous pouvez utiliser notre formulaire sécurisé. Le processus est simple et confidentiel :\n\n1. Choisissez si vous souhaitez rester anonyme ou fournir vos coordonnées\n2. Décrivez l'incident avec autant de détails que possible (date, lieu, circonstances)\n3. Ajoutez des preuves si disponibles (photos, vidéos, enregistrements audio)\n4. Recevez un code confidentiel unique pour suivre votre dossier\n5. Votre cas sera traité en toute confidentialité par notre équipe\n\nVotre signalement sera :\n• Traité avec respect et empathie\n• Protégé par la confidentialité\n• Suivi par des professionnels qualifiés\n• Transmis aux services compétents si nécessaire\n\nVoulez-vous commencer maintenant ?",
         resources: [],
       }
     }
-
-    if (lowerMessage.includes("plainte") || lowerMessage.includes("signaler")) {
+    
+    if (lowerMessage.includes("services") || lowerMessage.includes("près") || lowerMessage.includes("proche") || lowerMessage === "5") {
       return {
         content:
-          "Pour signaler un cas, vous pouvez utiliser notre formulaire sécurisé. Le processus est simple :\n\n1. Choisissez si vous souhaitez rester anonyme\n2. Décrivez l'incident avec autant de détails que possible\n3. Recevez un code confidentiel pour suivre votre dossier\n\nVotre cas sera traité en toute confidentialité. Voulez-vous commencer maintenant ?",
+          "Voici les services disponibles près de chez vous :\n\nPour trouver les services les plus proches de votre localisation, j'ai besoin de votre autorisation pour accéder à votre géolocalisation. Une fois autorisée, je pourrai vous fournir :\n• Les centres de santé les plus proches\n• Les services juridiques disponibles dans votre zone\n• Les ONG et associations actives près de vous\n• Les numéros d'urgence locaux\n• Les horaires et contacts de chaque service\n\nSouhaitez-vous partager votre localisation pour obtenir ces informations personnalisées ?",
         resources: [],
       }
     }
 
     return {
         content:
-          "Je suis là pour vous aider. Je peux vous renseigner sur :\n\n• Les centres de santé et soins médicaux\n• L'assistance juridique et vos droits\n• Le soutien psychologique\n• Comment signaler un cas\n• Les services disponibles près de chez vous\n\nN'hésitez pas à me poser vos questions.",
+          "Je suis là pour vous aider. Je peux vous renseigner sur :\n\n1. Les centres de santé et soins médicaux\n2. L'assistance juridique et vos droits\n3. Le soutien psychologique\n4. Comment signaler un cas\n5. Les services disponibles près de chez vous\n\nRépondez simplement par le numéro (1, 2, 3, 4 ou 5) pour obtenir plus d'informations sur l'option choisie.",
       resources: [],
     }
   }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Lock, Mail, Loader2, AlertCircle, Home } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { apiService } from "@/lib/api"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,6 +22,23 @@ export default function LoginPage() {
     password: "",
   })
 
+  // Récupérer le token CSRF au chargement de la page
+  useEffect(() => {
+    const fetchCSRFToken = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        await fetch(`${API_URL}/csrf-token`, {
+          method: 'GET',
+          credentials: 'include',
+        })
+      } catch (error) {
+        console.warn('Erreur lors de la récupération du token CSRF:', error)
+      }
+    }
+
+    fetchCSRFToken()
+  }, [])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,25 +46,48 @@ export default function LoginPage() {
     setError("")
 
     try {
-      // Simulation de connexion avec vérification des identifiants
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Utiliser l'API réelle pour la connexion
+      const response = await apiService.login({
+        email: formData.email,
+        password: formData.password
+      })
+
+      // Vérifier que les données sont bien stockées
+      if (typeof window !== 'undefined') {
+        const storedToken = localStorage.getItem('auth_token')
+        const storedUser = localStorage.getItem('user')
+        
+        if (!storedToken || !storedUser) {
+          console.error('Login - Token or user not stored in localStorage')
+          setError('Erreur lors de la connexion. Veuillez réessayer.')
+          setIsLoading(false)
+          return
+        }
+      }
       
-      // Redirection basée sur l'email (simulation de la logique backend)
-      if (formData.email.includes('admin')) {
-        router.push('/admin')
-      } else if (formData.email.includes('investigator') || formData.email.includes('enqueteur')) {
+      // Attendre un court instant pour s'assurer que localStorage est mis à jour
+      await new Promise(resolve => setTimeout(resolve, 150))
+      
+      // Redirection basée sur le rôle de l'utilisateur (normaliser en majuscules)
+      const role = (response.user.role || '').toUpperCase()
+      
+      if (role === 'ADMIN') {
+        // Utiliser replace pour éviter de pouvoir revenir en arrière vers la page de login
+        router.replace('/admin')
+      } else if (role === 'INVESTIGATOR') {
         // Pour l'enquêteur, rediriger vers la page biométrique
-        router.push('/auth/biometric-verification')
-      } else if (formData.email.includes('ngo')) {
-        router.push('/ngo/dashboard')
-      } else if (formData.email.includes('assurance')) {
-        router.push('/assurance/dashboard')
+        router.replace('/auth/biometric-verification')
+      } else if (role === 'NGO') {
+        router.replace('/ngo/dashboard')
+      } else if (role === 'ASSURANCE') {
+        router.replace('/assurance/dashboard')
       } else {
         // Par défaut, rediriger vers le profil utilisateur
-        router.push('/profile')
+        router.replace('/profile')
       }
-    } catch (error) {
-      setError("Email ou mot de passe incorrect")
+    } catch (error: any) {
+      console.error('Erreur de connexion:', error)
+      setError(error.message || "Email ou mot de passe incorrect")
     } finally {
       setIsLoading(false)
     }

@@ -28,9 +28,15 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         return
       }
 
-      if (allowedRoles && !allowedRoles.includes(user.role)) {
-        router.push("/")
-        return
+      if (allowedRoles) {
+        // Normaliser les rôles pour la comparaison (tolérer majuscules et minuscules)
+        const userRole = (user.role || '').toUpperCase()
+        const normalizedAllowedRoles = allowedRoles.map(r => (r || '').toUpperCase())
+        
+        if (!normalizedAllowedRoles.includes(userRole)) {
+          router.push("/")
+          return
+        }
       }
 
       setIsAuthorized(true)
