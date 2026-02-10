@@ -69,9 +69,17 @@ const nextConfig = {
     
     // Extraire le domaine de l'URL de l'API pour la CSP
     let apiDomain = 'http://localhost:3001'
+    let apiDomainList = 'http://localhost:3001'
     try {
       const apiUrlObj = new URL(apiUrlEnv)
       apiDomain = `${apiUrlObj.protocol}//${apiUrlObj.host}`
+      // Pour la CSP, inclure à la fois le domaine API et le domaine frontend en production
+      // En production, le frontend est sur vbgsos.fikiri.org et l'API sur api.vbgsos.fikiri.org
+      if (!isDev && apiDomain.includes('api.vbgsos.fikiri.org')) {
+        apiDomainList = 'https://api.vbgsos.fikiri.org https://vbgsos.fikiri.org'
+      } else {
+        apiDomainList = apiDomain
+      }
     } catch (e) {
       // Si l'URL n'est pas valide, utiliser la valeur par défaut
       console.warn('⚠️ URL API invalide pour CSP, utilisation de localhost:', apiUrlEnv)
@@ -83,7 +91,7 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https: blob:",
-      `connect-src 'self' ${apiDomain} ${apiUrl} http://localhost:3001 https://api.openai.com https://static.cloudflareinsights.com`, // API backend + OpenAI + Cloudflare Insights
+      `connect-src 'self' ${apiDomainList} ${apiUrl} http://localhost:3001 https://api.openai.com https://static.cloudflareinsights.com`, // API backend + Frontend + OpenAI + Cloudflare Insights
       "media-src 'self' blob: data:", // Pour les enregistrements audio/vidéo
       "frame-ancestors 'none'",
       "base-uri 'self'",
