@@ -243,11 +243,14 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
           headers['X-CSRF-Token'] = csrfToken
         }
 
-        console.log('📤 Envoi de la plainte:', {
-          url: `${API_URL}/complaints/victim`,
-          hasCSRFToken: !!csrfToken,
-          payload: complaintPayload
-        })
+        // Log de debug uniquement en développement
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📤 Envoi de la plainte:', {
+            url: `${API_URL}/complaints/victim`,
+            hasCSRFToken: !!csrfToken,
+            payload: complaintPayload
+          })
+        }
 
         // Ajouter un timeout pour éviter les blocages QUIC
         const complaintController = new AbortController()
@@ -275,11 +278,14 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
           throw new Error(`Erreur serveur: ${response.status} ${response.statusText}`)
         }
 
-        console.log('📥 Réponse du serveur:', {
-          ok: response.ok,
-          status: response.status,
-          result
-        })
+        // Log de debug uniquement en développement
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📥 Réponse du serveur:', {
+            ok: response.ok,
+            status: response.status,
+            result
+          })
+        }
 
         if (!response.ok) {
           console.error('❌ Erreur HTTP:', {
@@ -291,7 +297,10 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
           throw new Error(result.message || result.error || `Erreur ${response.status}: ${response.statusText}`)
         }
 
-        console.log('📥 Réponse complète du serveur:', JSON.stringify(result, null, 2))
+        // Log de debug uniquement en développement
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📥 Réponse complète du serveur:', JSON.stringify(result, null, 2))
+        }
         
         // Vérifier plusieurs formats de réponse possibles
         let trackingCode: string | null = null
@@ -312,7 +321,10 @@ export function ComplaintStep3({ data, onBack }: Step3Props) {
         }
         
         if (trackingCode) {
-          console.log('✅ Code de suivi reçu:', trackingCode)
+          // Log de debug uniquement en développement
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Code de suivi reçu:', trackingCode)
+          }
           setUniqueCode(trackingCode)
           
           // NE PAS sauvegarder le code localement pour garantir la confidentialité
